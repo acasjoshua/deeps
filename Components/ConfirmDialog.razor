@@ -1,0 +1,44 @@
+@if (Visible)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-deeps-overlay/60"
+         @onkeydown:stopPropagation="true">
+        <section class="card w-full max-w-sm space-y-4"
+                 role="dialog"
+                 aria-modal="true"
+                 tabindex="-1"
+                 @ref="dialogRef"
+                 @onkeydown="HandleKeyDown">
+            @ChildContent
+        </section>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private ElementReference dialogRef;
+    private bool wasVisible;
+    private bool focusPending;
+
+    protected override void OnParametersSet()
+    {
+        if (Visible && !wasVisible)
+            focusPending = true;
+
+        wasVisible = Visible;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Visible && focusPending)
+        {
+            focusPending = false;
+            await dialogRef.FocusAsync();
+        }
+    }
+
+    private Task HandleKeyDown(KeyboardEventArgs args) =>
+        args.Key == "Escape" ? OnCancel.InvokeAsync() : Task.CompletedTask;
+}

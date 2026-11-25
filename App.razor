@@ -1,3 +1,6 @@
+@inject IJSRuntime JS
+@inject PracticeStore Store
+
 <Router AppAssembly="@typeof(App).Assembly">
     <Found Context="routeData">
         <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
@@ -6,7 +9,15 @@
     <NotFound>
         <PageTitle>Not found</PageTitle>
         <LayoutView Layout="@typeof(MainLayout)">
-            <p class="text-slate-400">Nothing here.</p>
+            <p class="text-deeps-muted">Nothing here.</p>
         </LayoutView>
     </NotFound>
 </Router>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await JS.InvokeVoidAsync("deepsSetTheme", Store.Settings.Theme);
+    }
+}

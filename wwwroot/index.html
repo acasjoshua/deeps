@@ -7,14 +7,57 @@
     <base href="/" />
     <link rel="stylesheet" href="css/app.css" />
 </head>
-<body class="bg-slate-950 text-slate-100">
-    <div id="app" class="p-6 text-slate-400">Loading...</div>
-    <div id="blazor-error-ui" class="hidden fixed bottom-0 inset-x-0 bg-red-900 p-3 text-sm">
+<body class="bg-deeps-page text-deeps-text">
+    <div id="app" class="p-6 text-deeps-muted">Loading...</div>
+    <div id="blazor-error-ui" class="hidden fixed bottom-0 inset-x-0 bg-deeps-danger-surface p-3 text-sm">
         An unhandled error has occurred.
         <a href="" class="underline">Reload</a>
     </div>
     <script src="_framework/blazor.webassembly.js"></script>
     <script>
+        window.deepsSetTheme = theme => {
+            document.documentElement.dataset.theme = theme === "light" ? "light" : "dark";
+        };
+
+        const deepsOverlayPublishers = new Map();
+        const deepsOverlaySubscriptions = new Map();
+        let deepsOverlaySubscriptionId = 0;
+
+        window.deepsOverlaySupported = () => "BroadcastChannel" in window;
+        window.deepsOverlayPublish = (categoryId, snapshot) => {
+            if (!window.deepsOverlaySupported()) return;
+            let channel = deepsOverlayPublishers.get(categoryId);
+            if (!channel) {
+                channel = new BroadcastChannel(`deeps-overlay-${categoryId}`);
+                deepsOverlayPublishers.set(categoryId, channel);
+            }
+            channel.postMessage(snapshot);
+        };
+        window.deepsOverlayClosePublisher = categoryId => {
+            const channel = deepsOverlayPublishers.get(categoryId);
+            if (!channel) return;
+            channel.close();
+            deepsOverlayPublishers.delete(categoryId);
+        };
+        window.deepsOverlaySubscribe = (categoryId, dotNetReference) => {
+            const channel = new BroadcastChannel(`deeps-overlay-${categoryId}`);
+            const listener = event => dotNetReference.invokeMethodAsync("ReceiveOverlaySnapshot", event.data);
+            channel.addEventListener("message", listener);
+            const id = ++deepsOverlaySubscriptionId;
+            deepsOverlaySubscriptions.set(id, { channel, listener });
+            return id;
+        };
+        window.deepsOverlayUnsubscribe = id => {
+            const subscription = deepsOverlaySubscriptions.get(id);
+            if (!subscription) return;
+            subscription.channel.removeEventListener("message", subscription.listener);
+            subscription.channel.close();
+            deepsOverlaySubscriptions.delete(id);
+        };
+        window.deepsSetOverlayMode = enabled => {
+            document.body.classList.toggle("deeps-overlay", enabled);
+        };
+
         document.addEventListener("keydown", event => {
             if (event.key !== " " || !(event.target instanceof Element)) return;
             const target = event.target;

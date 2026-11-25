@@ -1,0 +1,48 @@
+<div class="mt-4 flex flex-wrap gap-2" @onkeydown:stopPropagation="true">
+    @if (!Running && !Paused && Countdown == 0)
+    {
+        <button class="btn-primary" @onclick="OnStart">Start</button>
+    }
+    @if (Running)
+    {
+        <button class="btn-primary" @onclick="OnSplit">Split
+            <span class="ml-1 text-xs opacity-60">[@SplitHotkey]</span>
+        </button>
+        <button class="btn-ghost" @onclick="OnPause">Pause
+            <span class="ml-1 text-xs opacity-60">[@PauseHotkey]</span>
+        </button>
+        <button class="btn-ghost" @onclick="OnUndo" disabled="@(!CanUndo)">Undo
+            <span class="ml-1 text-xs opacity-60">[@UndoHotkey]</span>
+        </button>
+        <button class="btn-ghost" @onclick="OnSkip">Skip
+            <span class="ml-1 text-xs opacity-60">[@SkipHotkey]</span>
+        </button>
+        <button class="btn-ghost text-deeps-danger" @onclick="OnReset">Reset
+            <span class="ml-1 text-xs opacity-60">[@ResetHotkey]</span>
+        </button>
+    }
+    @if (Paused)
+    {
+        <button class="btn-primary" @onclick="OnResume">Resume</button>
+        <button class="btn-ghost text-deeps-danger" @onclick="OnReset">Reset</button>
+    }
+</div>
+
+@code {
+    [Parameter] public bool Running { get; set; }
+    [Parameter] public bool Paused { get; set; }
+    [Parameter] public int Countdown { get; set; }
+    [Parameter] public bool CanUndo { get; set; }
+    [Parameter] public string SplitHotkey { get; set; } = "";
+    [Parameter] public string PauseHotkey { get; set; } = "";
+    [Parameter] public string UndoHotkey { get; set; } = "";
+    [Parameter] public string SkipHotkey { get; set; } = "";
+    [Parameter] public string ResetHotkey { get; set; } = "";
+    [Parameter] public EventCallback OnStart { get; set; }
+    [Parameter] public EventCallback OnSplit { get; set; }
+    [Parameter] public EventCallback OnPause { get; set; }
+    [Parameter] public EventCallback OnResume { get; set; }
+    [Parameter] public EventCallback OnUndo { get; set; }
+    [Parameter] public EventCallback OnSkip { get; set; }
+    [Parameter] public EventCallback OnReset { get; set; }
+}

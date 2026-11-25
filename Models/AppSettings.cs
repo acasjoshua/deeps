@@ -30,6 +30,6 @@ public class AppSettings
     // Countdown before run starts (seconds, 0 = instant)
     public int StartDelay { get; set; } = 0;
 
-    // Theme (reserved for later)
+    // Theme preference
     public string Theme { get; set; } = "dark";
 }

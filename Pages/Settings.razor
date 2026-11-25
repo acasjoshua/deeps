@@ -11,12 +11,12 @@
     @* ── Hotkeys ── *@
     <section class="card space-y-4">
         <h2 class="text-lg font-semibold">Hotkeys</h2>
-        <p class="text-xs text-slate-400">Click a field, then press the key you want to bind.</p>
+        <p class="text-xs text-deeps-muted">Click a field, then press the key you want to bind.</p>
 
         @foreach (var binding in hotkeys)
         {
             <div class="flex items-center justify-between gap-4">
-                <label class="text-sm text-slate-300 w-32">@binding.Label</label>
+                <label class="text-sm text-deeps-soft w-32">@binding.Label</label>
                 <div class="relative">
                     <input class="input w-28 text-center cursor-pointer select-none"
                            readonly
@@ -27,7 +27,7 @@
                            @onkeydown:preventDefault="true" />
                     @if (capturingFor == binding.PropName)
                     {
-                        <span class="absolute -top-5 left-0 text-xs text-deeps-400">Press a key…</span>
+                        <span class="absolute -top-5 left-0 text-xs text-deeps-accent">Press a key…</span>
                     }
                 </div>
                 <button class="btn-ghost text-xs" @onclick="@(() => binding.SetValue(settings, binding.Default))">Reset</button>
@@ -35,12 +35,23 @@
         }
     </section>
 
+    <section class="card space-y-4">
+        <h2 class="text-lg font-semibold">Theme</h2>
+        <label class="flex items-center justify-between gap-4 text-sm">
+            <span>Color theme</span>
+            <select class="input w-32" @bind="settings.Theme">
+                <option value="dark">Dark</option>
+                <option value="light">Light</option>
+            </select>
+        </label>
+    </section>
+
     @* ── Gamepad / Controller ── *@
     <section class="card space-y-4">
         <div class="flex items-center justify-between">
             <div>
                 <h2 class="text-lg font-semibold">Gamepad / Controller</h2>
-                <p class="text-xs text-slate-400">Connect a USB/Bluetooth controller to trigger timer actions.</p>
+                <p class="text-xs text-deeps-muted">Connect a USB/Bluetooth controller to trigger timer actions.</p>
             </div>
             <input type="checkbox" @bind="settings.GamepadEnabled" class="accent-deeps-500 w-4 h-4" />
         </div>
@@ -49,7 +60,7 @@
         {
             <div class="space-y-3 pt-2">
                 <div class="flex items-center justify-between text-sm">
-                    <span class="text-slate-300">Start / Split Button</span>
+                    <span class="text-deeps-soft">Start / Split Button</span>
                     <select class="input w-36" @bind="settings.GamepadButtonStartSplit">
                         <option value="0">Button 0 (A / Cross)</option>
                         <option value="1">Button 1 (B / Circle)</option>
@@ -61,7 +72,7 @@
                     </select>
                 </div>
                 <div class="flex items-center justify-between text-sm">
-                    <span class="text-slate-300">Pause Button</span>
+                    <span class="text-deeps-soft">Pause Button</span>
                     <select class="input w-36" @bind="settings.GamepadButtonPause">
                         <option value="9">Button 9 (Start / Menu)</option>
                         <option value="8">Button 8 (Back / Select)</option>
@@ -70,7 +81,7 @@
                     </select>
                 </div>
                 <div class="flex items-center justify-between text-sm">
-                    <span class="text-slate-300">Undo Button</span>
+                    <span class="text-deeps-soft">Undo Button</span>
                     <select class="input w-36" @bind="settings.GamepadButtonUndo">
                         <option value="1">Button 1 (B / Circle)</option>
                         <option value="2">Button 2 (X / Square)</option>
@@ -79,7 +90,7 @@
                     </select>
                 </div>
                 <div class="flex items-center justify-between text-sm">
-                    <span class="text-slate-300">Reset Button</span>
+                    <span class="text-deeps-soft">Reset Button</span>
                     <select class="input w-36" @bind="settings.GamepadButtonReset">
                         <option value="8">Button 8 (Back / Select)</option>
                         <option value="9">Button 9 (Start / Menu)</option>
@@ -95,7 +106,7 @@
         <h2 class="text-lg font-semibold">Timer</h2>
 
         <div class="flex items-center justify-between">
-            <label class="text-sm text-slate-300">Decimal places</label>
+            <label class="text-sm text-deeps-soft">Decimal places</label>
             <select class="input w-24" @bind="settings.TimerDecimalPlaces">
                 <option value="0">0</option>
                 <option value="1">1</option>
@@ -105,12 +116,12 @@
         </div>
 
         <div class="flex items-center justify-between">
-            <label class="text-sm text-slate-300">Start delay (seconds)</label>
+            <label class="text-sm text-deeps-soft">Start delay (seconds)</label>
             <input class="input w-24" type="number" min="0" max="10" @bind="settings.StartDelay" />
         </div>
 
         <div class="flex items-center justify-between">
-            <label class="text-sm text-slate-300">Default timing method</label>
+            <label class="text-sm text-deeps-soft">Default timing method</label>
             <select class="input w-32" @bind="settings.TimingMethod">
                 <option value="@TimingMethod.RealTime">Real time</option>
                 <option value="@TimingMethod.GameTime">Game time</option>
@@ -143,7 +154,7 @@
 
     @if (!string.IsNullOrEmpty(savedMsg))
     {
-        <p class="text-sm text-green-400">@savedMsg</p>
+        <p class="text-sm text-deeps-success">@savedMsg</p>
     }
 </div>
 
@@ -179,6 +190,7 @@
             HotkeyReset        = Store.Settings.HotkeyReset,
             HotkeyUndo         = Store.Settings.HotkeyUndo,
             HotkeySkip         = Store.Settings.HotkeySkip,
+            Theme              = Store.Settings.Theme,
             TimerDecimalPlaces = Store.Settings.TimerDecimalPlaces,
             StartDelay         = Store.Settings.StartDelay,
             TimingMethod       = Store.Settings.TimingMethod,
@@ -207,6 +219,7 @@
         Store.Settings.HotkeyReset        = settings.HotkeyReset;
         Store.Settings.HotkeyUndo         = settings.HotkeyUndo;
         Store.Settings.HotkeySkip         = settings.HotkeySkip;
+        Store.Settings.Theme              = settings.Theme;
         Store.Settings.TimerDecimalPlaces = settings.TimerDecimalPlaces;
         Store.Settings.StartDelay         = settings.StartDelay;
         Store.Settings.TimingMethod       = settings.TimingMethod;
@@ -217,6 +230,7 @@
         Store.Settings.GamepadButtonReset      = settings.GamepadButtonReset;
         Store.Settings.GamepadButtonUndo       = settings.GamepadButtonUndo;
         await Store.SaveSettingsAsync();
+        await JS.InvokeVoidAsync("deepsSetTheme", settings.Theme);
         savedMsg = "✓ Settings saved";
         await Task.Delay(2000);
         savedMsg = "";

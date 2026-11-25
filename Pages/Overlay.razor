@@ -1,0 +1,135 @@
+@page "/overlay/{CategoryId:guid}"
+@layout OverlayLayout
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<PageTitle>DEEPS OBS Overlay</PageTitle>
+
+<main class="min-h-screen bg-transparent p-4 font-sans">
+    @if (unsupported)
+    {
+        <p class="text-deeps-danger">This browser does not support live DEEPS overlays.</p>
+    }
+    else if (disconnected || snapshot is null)
+    {
+        <section class="w-fit rounded-xl border border-deeps-border bg-deeps-surface/90 p-4 text-deeps-muted shadow-xl">
+            Waiting for the practice page…
+        </section>
+    }
+    else
+    {
+        <section class="w-fit min-w-72 rounded-xl border border-deeps-border bg-deeps-surface/90 p-4 shadow-xl"
+                 aria-live="polite">
+            <div class="text-xs uppercase tracking-wide text-deeps-muted">
+                @snapshot.GameName · @snapshot.CategoryName
+            </div>
+            <div class="mt-1 font-mono text-5xl font-bold text-deeps-accent">
+                @if (snapshot.State == "Starting")
+                {
+                    @snapshot.Countdown
+                }
+                else
+                {
+                    @snapshot.Elapsed
+                }
+            </div>
+            <div class="mt-1 flex items-center justify-between gap-6 text-sm text-deeps-soft">
+                <span>@snapshot.State</span>
+                @if (!string.IsNullOrEmpty(snapshot.SegmentName))
+                {
+                    <span>@snapshot.SegmentName</span>
+                }
+            </div>
+            @if (!string.IsNullOrEmpty(snapshot.LastSplit) || !string.IsNullOrEmpty(snapshot.PersonalBest))
+            {
+                <div class="mt-3 flex gap-5 border-t border-deeps-border pt-2 text-xs text-deeps-muted">
+                    @if (!string.IsNullOrEmpty(snapshot.LastSplit))
+                    {
+                        <span>Last split <b class="font-mono text-deeps-text">@snapshot.LastSplit</b></span>
+                    }
+                    @if (!string.IsNullOrEmpty(snapshot.Delta))
+                    {
+                        <span>Delta <b class="font-mono text-deeps-text">@snapshot.Delta</b></span>
+                    }
+                    @if (!string.IsNullOrEmpty(snapshot.PersonalBest))
+                    {
+                        <span>PB <b class="font-mono text-deeps-text">@snapshot.PersonalBest</b></span>
+                    }
+                </div>
+            }
+        </section>
+    }
+</main>
+
+@code {
+    [Parameter] public Guid CategoryId { get; set; }
+
+    private OverlaySnapshot? snapshot;
+    private DotNetObjectReference<Overlay>? dotNetReference;
+    private CancellationTokenSource lifetime = new();
+    private Task? monitorTask;
+    private DateTime lastUpdate;
+    private int subscriptionId;
+    private bool disconnected = true;
+    private bool unsupported;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        await JS.InvokeVoidAsync("deepsSetOverlayMode", true);
+        if (!await JS.InvokeAsync<bool>("deepsOverlaySupported"))
+        {
+            unsupported = true;
+            StateHasChanged();
+            return;
+        }
+
+        dotNetReference = DotNetObjectReference.Create(this);
+        subscriptionId = await JS.InvokeAsync<int>(
+            "deepsOverlaySubscribe", CategoryId.ToString("N"), dotNetReference);
+        monitorTask = MonitorConnectionAsync(lifetime.Token);
+    }
+
+    [JSInvokable]
+    public Task ReceiveOverlaySnapshot(OverlaySnapshot value) => InvokeAsync(() =>
+    {
+        snapshot = value;
+        lastUpdate = DateTime.UtcNow;
+        disconnected = false;
+        StateHasChanged();
+    });
+
+    private async Task MonitorConnectionAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(500));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                var nowDisconnected = snapshot is null ||
+                    DateTime.UtcNow - lastUpdate > TimeSpan.FromSeconds(2);
+                if (nowDisconnected != disconnected)
+                {
+                    disconnected = nowDisconnected;
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        lifetime.Cancel();
+        if (subscriptionId != 0)
+            await JS.InvokeVoidAsync("deepsOverlayUnsubscribe", subscriptionId);
+        await JS.InvokeVoidAsync("deepsSetOverlayMode", false);
+        dotNetReference?.Dispose();
+        if (monitorTask is not null)
+            await monitorTask;
+        lifetime.Dispose();
+    }
+}

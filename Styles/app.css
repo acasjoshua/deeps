@@ -14,15 +14,74 @@
   --deeps-800: 6 95 70;
   --deeps-900: 6 78 59;
   --deeps-950: 2 44 34;
-  --deeps-chart-line: var(--deeps-500);
-  --deeps-chart-point: var(--deeps-300);
-  --deeps-danger: 239 68 68;
+  --deeps-page: 2 6 23;
+  --deeps-surface: 15 23 42;
+  --deeps-raised: 30 41 59;
+  --deeps-hover: 51 65 85;
+  --deeps-input: 2 6 23;
+  --deeps-overlay: 0 0 0;
+  --deeps-border: 30 41 59;
+  --deeps-border-strong: 51 65 85;
+  --deeps-text: 241 245 249;
+  --deeps-bright: 255 255 255;
+  --deeps-bright-soft: 226 232 240;
+  --deeps-soft: 203 213 225;
+  --deeps-muted: 148 163 184;
+  --deeps-subtle: 100 116 139;
+  --deeps-faint: 71 85 105;
+  --deeps-on-accent: 15 23 42;
+  --deeps-accent: 52 211 153;
+  --deeps-accent-soft: 110 231 183;
+  --deeps-accent-surface: 6 78 59;
+  --deeps-success: 74 222 128;
+  --deeps-warning: 250 204 21;
+  --deeps-warning-surface: 113 63 18;
+  --deeps-danger: 248 113 113;
+  --deeps-danger-soft: 252 165 165;
+  --deeps-danger-hover: 220 38 38;
+  --deeps-danger-strong: 239 68 68;
+  --deeps-danger-solid: 185 28 28;
+  --deeps-danger-surface: 127 29 29;
+  --deeps-chart-line: var(--deeps-accent);
+  --deeps-chart-point: var(--deeps-accent-soft);
+}
+
+:root[data-theme="light"] {
+  --deeps-page: 248 250 252;
+  --deeps-surface: 255 255 255;
+  --deeps-raised: 241 245 249;
+  --deeps-hover: 226 232 240;
+  --deeps-input: 255 255 255;
+  --deeps-overlay: 15 23 42;
+  --deeps-border: 226 232 240;
+  --deeps-border-strong: 203 213 225;
+  --deeps-text: 15 23 42;
+  --deeps-bright: 2 6 23;
+  --deeps-bright-soft: 30 41 59;
+  --deeps-soft: 51 65 85;
+  --deeps-muted: 71 85 105;
+  --deeps-subtle: 100 116 139;
+  --deeps-faint: 148 163 184;
+  --deeps-accent: 4 120 87;
+  --deeps-accent-soft: 6 95 70;
+  --deeps-accent-surface: 167 243 208;
+  --deeps-success: 21 128 61;
+  --deeps-warning: 161 98 7;
+  --deeps-warning-surface: 254 249 195;
+  --deeps-danger: 185 28 28;
+  --deeps-danger-soft: 220 38 38;
+  --deeps-danger-hover: 185 28 28;
+  --deeps-danger-strong: 185 28 28;
+  --deeps-danger-solid: 185 28 28;
+  --deeps-danger-surface: 254 226 226;
 }
 
 @layer components {
   .btn { @apply rounded-lg px-3 py-1.5 text-sm font-medium transition disabled:opacity-40; }
-  .btn-primary { @apply btn bg-deeps-500 text-slate-900 hover:bg-deeps-400; }
-  .btn-ghost { @apply btn bg-slate-800 text-slate-100 hover:bg-slate-700; }
-  .card { @apply rounded-xl border border-slate-800 bg-slate-900 p-4; }
-  .input { @apply rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-500 focus:border-deeps-500 focus:outline-none; }
+  .btn-primary { @apply btn bg-deeps-500 text-deeps-on-accent hover:bg-deeps-400; }
+  .btn-ghost { @apply btn bg-deeps-raised text-deeps-text hover:bg-deeps-hover; }
+  .card { @apply rounded-xl border border-deeps-border bg-deeps-surface p-4; }
+  .input { @apply rounded-lg border border-deeps-border-strong bg-deeps-input px-3 py-1.5 text-sm text-deeps-text placeholder-deeps-subtle focus:border-deeps-500 focus:outline-none; }
 }
+
+body.deeps-overlay { background: transparent !important; }

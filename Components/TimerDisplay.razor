@@ -1,0 +1,47 @@
+@if (Countdown > 0)
+{
+    <div class="mb-2 text-center text-6xl font-mono font-bold text-deeps-accent">@Countdown</div>
+}
+else
+{
+    <div class="font-mono text-5xl @TimerColor">
+        @StatsService.Format(Elapsed, DecimalPlaces)
+    </div>
+}
+
+<div class="mt-1 flex gap-4 text-sm text-deeps-muted">
+    @if (Running || Paused)
+    {
+        <span>Segment: <b class="text-deeps-bright">@CurrentSegmentName</b></span>
+        @if (BestPossible.HasValue)
+        {
+            <span>Best possible: <span class="font-mono text-deeps-accent-soft">@StatsService.Format(BestPossible)</span></span>
+        }
+    }
+    else
+    {
+        <span>Ready — press <kbd class="rounded bg-deeps-hover px-1">@StartHotkey</kbd> to start</span>
+    }
+</div>
+
+@if ((Running || Paused) && PbTime.HasValue)
+{
+    var pct = Math.Clamp((int)(Elapsed.TotalSeconds / PbTime.Value.TotalSeconds * 100), 0, 100);
+    <div class="mt-2 h-1.5 w-full rounded bg-deeps-hover">
+        <div class="h-full rounded bg-deeps-500 transition-all" style="width:@(pct)%"></div>
+    </div>
+    <div class="mt-0.5 text-xs text-deeps-subtle">PB pace: @pct%</div>
+}
+
+@code {
+    [Parameter] public TimeSpan Elapsed { get; set; }
+    [Parameter] public int Countdown { get; set; }
+    [Parameter] public bool Running { get; set; }
+    [Parameter] public bool Paused { get; set; }
+    [Parameter] public string TimerColor { get; set; } = "";
+    [Parameter] public string? CurrentSegmentName { get; set; }
+    [Parameter] public TimeSpan? BestPossible { get; set; }
+    [Parameter] public TimeSpan? PbTime { get; set; }
+    [Parameter] public string StartHotkey { get; set; } = "";
+    [Parameter] public int DecimalPlaces { get; set; } = 2;
+}

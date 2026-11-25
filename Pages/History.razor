@@ -4,7 +4,7 @@
 
 @if (category is null)
 {
-    <p class="text-slate-400">Category not found.</p>
+    <p class="text-deeps-muted">Category not found.</p>
     return;
 }
 
@@ -20,15 +20,15 @@
 
 @* Session summary *@
 <div class="card mt-4">
-    <h2 class="font-semibold text-sm text-slate-400 uppercase tracking-wide">Today's session</h2>
+    <h2 class="font-semibold text-sm text-deeps-muted uppercase tracking-wide">Today's session</h2>
     <div class="mt-2 flex flex-wrap gap-6 text-sm">
-        <div><dt class="text-slate-500">Runs</dt><dd class="font-mono">@sessionRuns.Count</dd></div>
-        <div><dt class="text-slate-500">Completed</dt><dd class="font-mono">@sessionRuns.Count(r=>r.Completed)</dd></div>
-        <div><dt class="text-slate-500">Resets</dt><dd class="font-mono">@sessionRuns.Count(r=>!r.Completed)</dd></div>
-        <div><dt class="text-slate-500">Playtime</dt><dd class="font-mono">@StatsService.Format(StatsService.SessionPlaytime(category, DateTime.UtcNow))</dd></div>
+        <div><dt class="text-deeps-subtle">Runs</dt><dd class="font-mono">@sessionRuns.Count</dd></div>
+        <div><dt class="text-deeps-subtle">Completed</dt><dd class="font-mono">@sessionRuns.Count(r=>r.Completed)</dd></div>
+        <div><dt class="text-deeps-subtle">Resets</dt><dd class="font-mono">@sessionRuns.Count(r=>!r.Completed)</dd></div>
+        <div><dt class="text-deeps-subtle">Playtime</dt><dd class="font-mono">@StatsService.Format(StatsService.SessionPlaytime(category, DateTime.UtcNow))</dd></div>
         @if (sessionBest is not null)
         {
-            <div><dt class="text-slate-500">Session best</dt><dd class="font-mono">@StatsService.Format(sessionBest.Total)</dd></div>
+            <div><dt class="text-deeps-subtle">Session best</dt><dd class="font-mono">@StatsService.Format(sessionBest.Total)</dd></div>
         }
     </div>
 </div>
@@ -39,7 +39,7 @@
     var heatmap = StatsService.ResetHeatmap(category);
     int maxResets = heatmap.Length > 0 ? heatmap.Max() : 0;
     <div class="card mt-4">
-        <h2 class="font-semibold text-sm text-slate-400 uppercase tracking-wide mb-2">Reset heatmap (run kill rate)</h2>
+        <h2 class="font-semibold text-sm text-deeps-muted uppercase tracking-wide mb-2">Reset heatmap (run kill rate)</h2>
         <div class="flex gap-1 items-end overflow-x-auto pb-2">
             @for (int i = 0; i < category.Segments.OrderBy(s=>s.Order).Count(); i++)
             {
@@ -47,11 +47,11 @@
                 var pct  = maxResets > 0 ? (double)heatmap[i] / maxResets : 0;
                 var h    = (int)(pct * 64) + 4;
                 <div class="flex flex-col items-center gap-1 min-w-[2.5rem]" title="@seg.Name: @heatmap[i] resets">
-                    <span class="text-xs font-mono text-red-400">@heatmap[i]</span>
+                    <span class="text-xs font-mono text-deeps-danger">@heatmap[i]</span>
                     <div class="w-8 rounded-t"
                          style="height:@(h)px; background: rgb(var(--deeps-danger) / @(0.2 + pct * 0.8))">
                     </div>
-                    <span class="text-xs text-slate-500 truncate w-8 text-center">@(seg.Name.Length>4 ? seg.Name[..4]+"…" : seg.Name)</span>
+                    <span class="text-xs text-deeps-subtle truncate w-8 text-center">@(seg.Name.Length>4 ? seg.Name[..4]+"…" : seg.Name)</span>
                 </div>
             }
         </div>
@@ -62,12 +62,12 @@
 <div class="card mt-4 overflow-x-auto">
     <div class="flex items-center justify-between mb-3">
         <h2 class="font-semibold">All runs</h2>
-        <label class="flex items-center gap-2 text-xs text-slate-400">
+        <label class="flex items-center gap-2 text-xs text-deeps-muted">
             <input type="checkbox" @bind="showCompleted" class="accent-deeps-500" /> Completed only
         </label>
     </div>
     <table class="w-full text-sm text-left">
-        <thead class="text-slate-500 text-xs uppercase tracking-wide">
+        <thead class="text-deeps-subtle text-xs uppercase tracking-wide">
             <tr>
                 <th class="py-1 pr-3">#</th>
                 <th>Date</th>
@@ -88,10 +88,10 @@
                 var resetSeg = !run.Completed && run.ResetAtSegmentIndex >= 0
                     ? category.Segments.OrderBy(s=>s.Order).ElementAtOrDefault(run.ResetAtSegmentIndex)?.Name
                     : null;
-                <tr class="border-t border-slate-800 @(run.Completed?"":"text-slate-500")">
+                <tr class="border-t border-deeps-border @(run.Completed?"":"text-deeps-subtle")">
                     <td class="py-1.5 pr-3">@n</td>
                     <td>@run.StartedAt.ToLocalTime().ToString("MM/dd HH:mm")</td>
-                    <td class="@(IsPb(run) ? "text-yellow-400 font-bold" : "")">
+                    <td class="@(IsPb(run) ? "text-deeps-warning font-bold" : "")">
                         @StatsService.Format(run.Total)
                         @if (IsPb(run)) { <span class="ml-1 text-xs">PB</span> }
                     </td>
@@ -100,10 +100,10 @@
                     <td>@run.Mistakes.Count</td>
                     <td class="font-sans text-xs max-w-xs truncate">@run.Notes</td>
                     <td class="text-right">
-                        <button class="text-xs text-slate-400 hover:text-white mr-2"
+                        <button class="text-xs text-deeps-muted hover:text-deeps-bright mr-2"
                                 title="Edit run & split times"
                                 @onclick="@(() => OpenEditRun(capturedRun))">✏️</button>
-                        <button class="text-xs text-red-400 hover:text-red-300"
+                        <button class="text-xs text-deeps-danger hover:text-deeps-danger-soft"
                                 title="Delete run"
                                 @onclick="@(() => DeleteRun(capturedRun))">🗑</button>
                     </td>
@@ -113,10 +113,10 @@
                 @if (expandedRunId == run.Id)
                 {
                     <tr>
-                        <td colspan="8" class="bg-slate-800/50 pb-2 px-4">
+                        <td colspan="8" class="bg-deeps-raised/50 pb-2 px-4">
                             <table class="w-full text-xs mt-1">
                                 <thead><tr>
-                                    <th class="text-left text-slate-500">Segment</th>
+                                    <th class="text-left text-deeps-subtle">Segment</th>
                                     <th>Duration</th>
                                     <th>Gold</th>
                                 </tr></thead>
@@ -135,9 +135,9 @@
                         </td>
                     </tr>
                 }
-                <tr class="cursor-pointer hover:bg-slate-800/30"
+                <tr class="cursor-pointer hover:bg-deeps-raised/30"
                     @onclick="@(() => ToggleExpand(capturedRun.Id))">
-                    <td colspan="8" class="text-center text-xs text-slate-600 pb-0.5">
+                    <td colspan="8" class="text-center text-xs text-deeps-faint pb-0.5">
                         @(expandedRunId == run.Id ? "▲ hide" : "▼ splits")
                     </td>
                 </tr>
@@ -146,7 +146,7 @@
     </table>
     @if (!FilteredRuns.Any())
     {
-        <p class="mt-4 text-center text-slate-500 text-sm">No runs yet.</p>
+        <p class="mt-4 text-center text-deeps-subtle text-sm">No runs yet.</p>
     }
 </div>
 
@@ -156,7 +156,7 @@
     <div class="card mt-4">
         <h2 class="font-semibold mb-2">Mistake breakdown</h2>
         <table class="w-full text-sm text-left">
-            <thead class="text-slate-500 text-xs uppercase tracking-wide">
+            <thead class="text-deeps-subtle text-xs uppercase tracking-wide">
                 <tr>
                     <th class="py-1">Category</th>
                     <th>Count</th>
@@ -166,7 +166,7 @@
             <tbody class="font-mono">
                 @foreach (var (mc, count, lost) in StatsService.MistakesByCategory(category))
                 {
-                    <tr class="border-t border-slate-800">
+                    <tr class="border-t border-deeps-border">
                         <td class="font-sans py-1">@mc</td>
                         <td>@count</td>
                         <td>@lost.ToString("F2")s</td>
@@ -180,14 +180,14 @@
 @* ── Edit / Manual Run Modal ── *@
 @if (editingRun is not null)
 {
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 overflow-y-auto p-4"
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-deeps-overlay/60 overflow-y-auto p-4"
          @onclick="@(() => editingRun = null)">
         <div class="card w-full max-w-lg space-y-4 my-8" @onclick:stopPropagation="true">
             <h3 class="font-semibold text-lg">@(isNewManualRun ? "Add Manual Run" : "Edit Run & Splits")</h3>
 
             <div class="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                    <label class="block text-slate-400">Timing Method</label>
+                    <label class="block text-deeps-muted">Timing Method</label>
                     <select class="input mt-1 w-full" @bind="editingRun.TimingMethod">
                         <option value="@TimingMethod.RealTime">Real Time</option>
                         <option value="@TimingMethod.GameTime">Game Time (Loadless)</option>
@@ -195,12 +195,12 @@
                 </div>
                 <div class="flex items-center gap-2 mt-6">
                     <input type="checkbox" id="runComp" @bind="editingRun.Completed" class="accent-deeps-500" />
-                    <label for="runComp" class="text-slate-200">Completed Run</label>
+                    <label for="runComp" class="text-deeps-bright-soft">Completed Run</label>
                 </div>
             </div>
 
             <div class="space-y-2">
-                <label class="block text-xs uppercase tracking-wide text-slate-400">Segment Times (e.g. 1:23.45 or 45.2)</label>
+                <label class="block text-xs uppercase tracking-wide text-deeps-muted">Segment Times (e.g. 1:23.45 or 45.2)</label>
                 <div class="max-h-60 overflow-y-auto space-y-2 pr-1">
                     @foreach (var seg in category.Segments.OrderBy(s => s.Order))
                     {
@@ -217,13 +217,13 @@
             </div>
 
             <div>
-                <label class="block text-sm text-slate-400">Run Notes</label>
+                <label class="block text-sm text-deeps-muted">Run Notes</label>
                 <textarea class="input mt-1 w-full h-16 resize-none text-xs" @bind="editingRun.Notes"></textarea>
             </div>
 
             @if (!string.IsNullOrEmpty(editError))
             {
-                <p class="text-xs text-red-400">@editError</p>
+                <p class="text-xs text-deeps-danger">@editError</p>
             }
 
             <div class="flex gap-2">

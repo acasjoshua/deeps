@@ -2,11 +2,11 @@
 @inject PracticeStore    Store
 @inject HotkeyService   Hotkeys
 @inject IJSRuntime      JS
-@implements IDisposable
+@implements IAsyncDisposable
 
 @if (category is null)
 {
-    <p class="text-slate-400">Category not found.</p>
+    <p class="text-deeps-muted">Category not found.</p>
     return;
 }
 
@@ -19,7 +19,7 @@
 
 <div class="flex items-center justify-between">
     <div>
-        <div class="text-xs uppercase tracking-wide text-slate-500">
+        <div class="text-xs uppercase tracking-wide text-deeps-subtle">
             @(Store.GameForCategory(CategoryId)?.Name)
         </div>
         <h1 class="text-2xl font-bold">@category.Name</h1>
@@ -27,81 +27,46 @@
     <div class="flex gap-2 text-xs" @onkeydown:stopPropagation="true">
         <a href="history/@CategoryId" class="btn-ghost">History</a>
         <a href="strategies/@CategoryId" class="btn-ghost">Strategies</a>
+        <a href="overlay/@CategoryId" class="btn-ghost" target="_blank" rel="noopener">OBS Overlay</a>
         <a href="settings" class="btn-ghost">⚙</a>
     </div>
 </div>
 
 @if (category.Segments.Count == 0)
 {
-    <p class="mt-4 text-slate-400">Add segments on the <a class="text-deeps-400 underline" href="games">Games</a> page first.</p>
+    <p class="mt-4 text-deeps-muted">Add segments on the <a class="text-deeps-accent underline" href="games">Games</a> page first.</p>
     return;
 }
 
 @* ── Timer card ── *@
 <div class="card mt-4">
-    @* Countdown overlay *@
-    @if (countdown > 0)
-    {
-        <div class="mb-2 text-center text-6xl font-mono font-bold text-deeps-400">@countdown</div>
-    }
-    else
-    {
-        <div class="font-mono text-5xl @TimerColor()">
-            @StatsService.Format(elapsed, Store.Settings.TimerDecimalPlaces)
-        </div>
-    }
+    <TimerDisplay Elapsed="elapsed"
+                  Countdown="countdown"
+                  Running="running"
+                  Paused="paused"
+                  TimerColor="@TimerColor()"
+                  CurrentSegmentName="@category.Segments.OrderBy(s => s.Order).ElementAtOrDefault(current)?.Name"
+                  BestPossible="bestPossible"
+                  PbTime="pbTime"
+                  StartHotkey="@Hotkeys.DisplayKey(Store.Settings.HotkeyStart)"
+                  DecimalPlaces="Store.Settings.TimerDecimalPlaces" />
 
-    <div class="mt-1 flex gap-4 text-sm text-slate-400">
-        @if (running || paused)
-        {
-            <span>Segment: <b class="text-white">@category.Segments.OrderBy(s=>s.Order).ElementAtOrDefault(current)?.Name</b></span>
-            @if (bestPossible.HasValue)
-            {
-                <span>Best possible: <span class="font-mono text-deeps-300">@StatsService.Format(bestPossible)</span></span>
-            }
-        }
-        else
-        {
-            <span>Ready — press <kbd class="rounded bg-slate-700 px-1">@Hotkeys.DisplayKey(Store.Settings.HotkeyStart)</kbd> to start</span>
-        }
-    </div>
-
-    @* PB / Goal progress bar *@
-    @if ((running || paused) && pbTime.HasValue)
-    {
-        var pct = Math.Clamp((int)(elapsed.TotalSeconds / pbTime.Value.TotalSeconds * 100), 0, 100);
-        <div class="mt-2 h-1.5 w-full rounded bg-slate-700">
-            <div class="h-full rounded bg-deeps-500 transition-all"
-                 style="width:@(pct)%"></div>
-        </div>
-        <div class="mt-0.5 text-xs text-slate-500">PB pace: @pct%</div>
-    }
-
-    @* Control buttons *@
-    <div class="mt-4 flex flex-wrap gap-2" @onkeydown:stopPropagation="true">
-        @if (!running && !paused && countdown == 0)
-        {
-            <button class="btn-primary" @onclick="StartOrSplit">Start</button>
-        }
-        @if (running)
-        {
-            <button class="btn-primary"  @onclick="StartOrSplit">Split
-                <span class="ml-1 text-xs opacity-60">[@Hotkeys.DisplayKey(Store.Settings.HotkeySplit)]</span></button>
-            <button class="btn-ghost"    @onclick="Pause">Pause
-                <span class="ml-1 text-xs opacity-60">[@Hotkeys.DisplayKey(Store.Settings.HotkeyPause)]</span></button>
-            <button class="btn-ghost"    @onclick="UndoSplit" disabled="@(splits.Count == 0)">Undo
-                <span class="ml-1 text-xs opacity-60">[@Hotkeys.DisplayKey(Store.Settings.HotkeyUndo)]</span></button>
-            <button class="btn-ghost"    @onclick="SkipSplit">Skip
-                <span class="ml-1 text-xs opacity-60">[@Hotkeys.DisplayKey(Store.Settings.HotkeySkip)]</span></button>
-            <button class="btn-ghost text-red-400" @onclick="InitiateReset">Reset
-                <span class="ml-1 text-xs opacity-60">[@Hotkeys.DisplayKey(Store.Settings.HotkeyReset)]</span></button>
-        }
-        @if (paused)
-        {
-            <button class="btn-primary"  @onclick="Resume">Resume</button>
-            <button class="btn-ghost text-red-400" @onclick="InitiateReset">Reset</button>
-        }
-    </div>
+    <ControlBar Running="running"
+                Paused="paused"
+                Countdown="countdown"
+                CanUndo="@(splits.Count > 0)"
+                SplitHotkey="@Hotkeys.DisplayKey(Store.Settings.HotkeySplit)"
+                PauseHotkey="@Hotkeys.DisplayKey(Store.Settings.HotkeyPause)"
+                UndoHotkey="@Hotkeys.DisplayKey(Store.Settings.HotkeyUndo)"
+                SkipHotkey="@Hotkeys.DisplayKey(Store.Settings.HotkeySkip)"
+                ResetHotkey="@Hotkeys.DisplayKey(Store.Settings.HotkeyReset)"
+                OnStart="StartOrSplit"
+                OnSplit="StartOrSplit"
+                OnPause="Pause"
+                OnResume="Resume"
+                OnUndo="UndoSplit"
+                OnSkip="SkipSplit"
+                OnReset="InitiateReset" />
 
     @* Mistake logging *@
     @if (running || paused)
@@ -132,7 +97,7 @@
     }
 
     @* Comparison selector *@
-    <div class="mt-3 flex items-center gap-2 text-xs text-slate-400" @onkeydown:stopPropagation="true">
+    <div class="mt-3 flex items-center gap-2 text-xs text-deeps-muted" @onkeydown:stopPropagation="true">
         Compare vs:
         <select class="input py-0.5 text-xs" @bind="comparison">
             <option value="PersonalBest">Personal Best</option>
@@ -159,104 +124,27 @@
                     <option value="@idx">@seg.Name</option>
                 }
             </select>
-            <span class="text-xs text-slate-400">Attempts: <b>@loopAttempts</b></span>
+            <span class="text-xs text-deeps-muted">Attempts: <b>@loopAttempts</b></span>
         }
     </div>
 </div>
 
-@* ── Splits table ── *@
-<div class="card mt-6 overflow-x-auto">
-    <table class="w-full text-left text-sm">
-        <thead class="text-slate-500 text-xs uppercase tracking-wide">
-            <tr>
-                <th class="py-1 pr-3">Segment</th>
-                <th>This run</th>
-                <th>Delta</th>
-                <th>@comparison</th>
-                <th>Best</th>
-                <th>Avg</th>
-                <th>σ</th>
-                <th>Rating</th>
-                <th>Time save</th>
-                <th>Mistakes</th>
-            </tr>
-        </thead>
-        <tbody class="font-mono">
-            @{int rowIdx = 0;}
-            @foreach (var seg in category.Segments.OrderBy(s => s.Order))
-            {
-                var ri = rowIdx++;
-                var thisRun     = ri < splits.Count    ? splits[ri].Duration    : (TimeSpan?)null;
-                var compTime    = StatsService.ComparisonTime(category, seg.Id, comparison);
-                var delta       = StatsService.Delta(thisRun, compTime);
-                var isActive    = running && ri == current;
-                var isGold      = thisRun.HasValue && StatsService.IsGold(category, seg.Id, thisRun.Value)
-                                  && category.Runs.Any(r => r.Splits.Any(s => s.SegmentId == seg.Id));
-                var rating      = StatsService.ConsistencyRating(category, seg.Id);
-                var timeSave    = StatsService.PossibleTimeSave(category, seg.Id);
+<SplitTable Category="category"
+            Splits="splits"
+            Running="running"
+            Current="current"
+            Comparison="comparison"
+            DecimalPlaces="Store.Settings.TimerDecimalPlaces" />
 
-                <tr class="@(isActive ? "text-deeps-400" : "") @(isGold ? "bg-yellow-900/20" : "")
-                           border-t border-slate-800">
-                    <td class="py-1.5 pr-3 font-sans @(seg.ParentId.HasValue ? "pl-4 text-slate-300" : "")">
-                        @(seg.ParentId.HasValue ? "↳ " : "")@seg.IconEmoji @seg.Name
-                        @if (isGold) { <span class="ml-1 text-yellow-400 text-xs" title="Gold split!">★</span> }
-                        @if (seg.GoalTime.HasValue)
-                        {
-                            <span class="ml-1 text-xs text-slate-500">🎯@StatsService.Format(seg.GoalTime)</span>
-                        }
-                    </td>
-                    <td>@StatsService.Format(thisRun, Store.Settings.TimerDecimalPlaces)</td>
-                    <td class="@DeltaColor(delta)">@StatsService.FormatDelta(delta, Store.Settings.TimerDecimalPlaces)</td>
-                    <td>@StatsService.Format(compTime)</td>
-                    <td>@StatsService.Format(StatsService.BestSegment(category, seg.Id))</td>
-                    <td>@StatsService.FormatSeconds(StatsService.AverageSeconds(category, seg.Id))</td>
-                    <td>@StatsService.FormatSeconds(StatsService.Consistency(category, seg.Id))</td>
-                    <td>@(rating.HasValue ? $"{rating:F0}" : "--")</td>
-                    <td>@StatsService.Format(timeSave)</td>
-                    <td>@StatsService.MistakeCount(category, seg.Id)</td>
-                </tr>
-
-                @* Active strategy note *@
-                var strat = category.Strategies
-                    .FirstOrDefault(s => s.SegmentId == seg.Id && s.IsActive);
-                if (isActive && strat is not null)
-                {
-                    <tr class="bg-slate-800/60">
-                        <td colspan="10" class="px-2 py-1 text-xs text-slate-300 font-sans italic">
-                            💡 <b>@strat.Title</b>: @strat.Notes
-                        </td>
-                    </tr>
-                }
-            }
-        </tbody>
-    </table>
-
-    <div class="mt-3 flex flex-wrap gap-4 text-sm text-slate-400">
-        <span>PB: <span class="font-mono text-white">@StatsService.Format(StatsService.PersonalBest(category)?.Total)</span></span>
-        <span>Sum of best: <span class="font-mono">@StatsService.Format(StatsService.SumOfBest(category))</span></span>
-        <span>Attempts: <span class="font-mono">@category.AttemptCount</span></span>
-        @if (category.GoalTime.HasValue)
-        {
-            <span>Goal: <span class="font-mono text-deeps-400">@StatsService.Format(category.GoalTime)</span></span>
-        }
+<ConfirmDialog Visible="@showResetPrompt" OnCancel="DismissResetPrompt">
+    <h3 class="font-semibold">Reset run?</h3>
+    <p class="text-sm text-deeps-muted">Save this attempt to history or discard it?</p>
+    <div class="flex flex-col gap-2">
+        <button class="btn-primary" @onclick="ResetSave">Save run &amp; reset</button>
+        <button class="btn-ghost text-deeps-danger" @onclick="ResetDiscard">Discard &amp; reset</button>
+        <button class="btn-ghost" @onclick="DismissResetPrompt">Keep running</button>
     </div>
-</div>
-
-@* Reset confirmation *@
-@if (showResetPrompt)
-{
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-        <div class="card w-full max-w-sm space-y-4">
-            <h3 class="font-semibold">Reset run?</h3>
-            <p class="text-sm text-slate-400">Save this attempt to history or discard it?</p>
-            <div class="flex flex-col gap-2" @onkeydown:stopPropagation="true">
-                <button class="btn-primary" @onclick="ResetSave">Save run &amp; reset</button>
-                <button class="btn-ghost text-red-400" @onclick="ResetDiscard">Discard &amp; reset</button>
-                <button class="btn-ghost"              @onclick="@(() => showResetPrompt = false)">Keep running</button>
-            </div>
-        </div>
-    </div>
-}
+</ConfirmDialog>
 
 </div>@* end focus wrapper *@
 
@@ -293,8 +181,11 @@
     private readonly System.Diagnostics.Stopwatch sw = new();
     private Timer?    ticker;
     private Timer?    gamepadTimer;
+    private Timer?    overlayTimer;
     private HashSet<int> prevGamepadButtons = new();
     private ElementReference pageRef;
+    private bool overlayPublisherStarted;
+    private bool disposed;
 
     private static readonly string[] mistakeCategories =
         { "Missed trick", "RNG", "Menu mistake", "Execution", "Knowledge", "Other" };
@@ -308,18 +199,26 @@
     {
         category   = Store.FindCategory(CategoryId);
         comparison = Store.Settings.Comparison;
-        pbTime     = StatsService.PersonalBest(category!)?.Total;
+        pbTime     = category is null ? null : StatsService.PersonalBest(category)?.Total;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender) await pageRef.FocusAsync();
+        if (firstRender && category is not null)
+        {
+            await pageRef.FocusAsync();
+            await PublishOverlayAsync();
+            overlayPublisherStarted = true;
+            overlayTimer = new Timer(_ => _ = InvokeAsync(PublishOverlayAsync), null, 250, 250);
+        }
     }
 
     // ─── Keyboard ─────────────────────────────────────────────────────────────
 
     private async Task OnKeyDown(KeyboardEventArgs e)
     {
+        if (showResetPrompt) return;
+
         if (!running && !paused && Hotkeys.IsStartOrSplit(e.Key))
         {
             await InvokeAsync(StartOrSplit);
@@ -349,6 +248,39 @@
             InitiateReset();
         }
         StateHasChanged();
+    }
+
+    private async Task PublishOverlayAsync()
+    {
+        if (disposed || category is null) return;
+
+        var state = countdown > 0 ? "Starting" : running ? "Running" : paused ? "Paused" : "Ready";
+        var lastSplit = splits.LastOrDefault();
+        TimeSpan? delta = null;
+        if (lastSplit is not null)
+        {
+            var comparisonTime = StatsService.ComparisonTime(category, lastSplit.SegmentId, comparison);
+            delta = StatsService.Delta(lastSplit.Duration, comparisonTime);
+        }
+
+        await JS.InvokeVoidAsync("deepsOverlayPublish", CategoryId.ToString("N"), new OverlaySnapshot
+        {
+            GameName = Store.GameForCategory(CategoryId)?.Name ?? "",
+            CategoryName = category.Name,
+            State = state,
+            Elapsed = StatsService.Format(elapsed, Store.Settings.TimerDecimalPlaces),
+            Countdown = countdown,
+            SegmentName = running || paused
+                ? category.Segments.OrderBy(s => s.Order).ElementAtOrDefault(current)?.Name
+                : null,
+            LastSplit = lastSplit is null
+                ? null
+                : StatsService.Format(lastSplit.Duration, Store.Settings.TimerDecimalPlaces),
+            Delta = lastSplit is null
+                ? null
+                : StatsService.FormatDelta(delta, Store.Settings.TimerDecimalPlaces),
+            PersonalBest = StatsService.Format(StatsService.PersonalBest(category)?.Total)
+        });
     }
 
     // ─── Timer controls ───────────────────────────────────────────────────────
@@ -500,13 +432,21 @@
         };
         await Store.SaveRunAsync(category, run);
         ResetState();
+        await pageRef.FocusAsync();
     }
 
-    private void ResetDiscard()
+    private async Task ResetDiscard()
     {
         showResetPrompt = false;
         StopTimer();
         ResetState();
+        await pageRef.FocusAsync();
+    }
+
+    private async Task DismissResetPrompt()
+    {
+        showResetPrompt = false;
+        await pageRef.FocusAsync();
     }
 
     private void Finish()
@@ -558,21 +498,19 @@
 
     private string TimerColor()
     {
-        if (!running && !paused) return "text-slate-200";
-        if (paused) return "text-slate-400";
-        if (splits.Count == 0) return "text-white";
+        if (!running && !paused) return "text-deeps-bright-soft";
+        if (paused) return "text-deeps-muted";
+        if (splits.Count == 0) return "text-deeps-bright";
         var last = splits[^1];
         var comp = StatsService.ComparisonTime(category!, last.SegmentId, comparison);
         var delta = StatsService.Delta(last.Duration, comp);
-        if (delta is null) return "text-white";
-        return delta.Value < TimeSpan.Zero ? "text-green-400" : "text-red-400";
+        if (delta is null) return "text-deeps-bright";
+        return delta.Value < TimeSpan.Zero ? "text-deeps-success" : "text-deeps-danger";
     }
-
-    private static string DeltaColor(TimeSpan? delta) =>
-        delta is null ? "" : delta.Value < TimeSpan.Zero ? "text-green-400" : "text-red-400";
 
     private async Task CheckGamepadAsync()
     {
+        if (showResetPrompt) return;
         if (!Store.Settings.GamepadEnabled) return;
         try
         {
@@ -613,10 +551,14 @@
         catch { }
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
+        disposed = true;
         ticker?.Dispose();
         countdownTimer?.Dispose();
         gamepadTimer?.Dispose();
+        overlayTimer?.Dispose();
+        if (overlayPublisherStarted)
+            await JS.InvokeVoidAsync("deepsOverlayClosePublisher", CategoryId.ToString("N"));
     }
 }

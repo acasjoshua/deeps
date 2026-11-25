@@ -4,7 +4,7 @@
 
 @if (category is null)
 {
-    <p class="text-slate-400">Category not found.</p>
+    <p class="text-deeps-muted">Category not found.</p>
     return;
 }
 
@@ -60,7 +60,7 @@
                 }
             </svg>
         </div>
-        <div class="flex justify-between text-xs text-slate-500 mt-1">
+        <div class="flex justify-between text-xs text-deeps-subtle mt-1">
             <span>@progression[0].Date.ToLocalTime().ToString("MM/dd/yy")</span>
             <span>@progression[^1].Date.ToLocalTime().ToString("MM/dd/yy")</span>
         </div>
@@ -71,7 +71,7 @@
 <div class="card mt-6 overflow-x-auto">
     <h2 class="font-semibold mb-3">Segment Statistics</h2>
     <table class="w-full text-sm text-left">
-        <thead class="text-slate-500 text-xs uppercase tracking-wide">
+        <thead class="text-deeps-subtle text-xs uppercase tracking-wide">
             <tr>
                 <th class="py-1 pr-3">Segment</th>
                 <th>PB split</th>
@@ -94,10 +94,10 @@
                 var rating   = StatsService.ConsistencyRating(category, seg.Id);
                 var trend    = StatsService.TrendAvg(category, seg.Id, 10);
                 var timeSave = StatsService.PossibleTimeSave(category, seg.Id);
-                <tr class="border-t border-slate-800">
+                <tr class="border-t border-deeps-border">
                     <td class="py-1.5 pr-3 font-sans">@seg.IconEmoji @seg.Name</td>
                     <td>@StatsService.Format(pbSplit?.Duration)</td>
-                    <td class="text-yellow-400">@StatsService.Format(StatsService.BestSegment(category, seg.Id))</td>
+                    <td class="text-deeps-warning">@StatsService.Format(StatsService.BestSegment(category, seg.Id))</td>
                     <td>@StatsService.FormatSeconds(StatsService.AverageSeconds(category, seg.Id))</td>
                     <td>@StatsService.FormatSeconds(StatsService.MedianSeconds(category, seg.Id))</td>
                     <td>@StatsService.Format(StatsService.WorstSegment(category, seg.Id))</td>
@@ -155,17 +155,17 @@
                     var label = (hMin + b * bw).ToString("F2");
                     <div class="flex flex-col items-center flex-1 gap-0.5"
                          title="@label – @(hMin + (b+1)*bw):F2 s: @counts[b] runs">
-                        <span class="text-xs text-slate-400">@counts[b]</span>
+                        <span class="text-xs text-deeps-muted">@counts[b]</span>
                         <div class="w-full rounded-t bg-deeps-500"
                              style="height:@((int)(pct * 80) + 4)px"></div>
-                        <span class="text-xs text-slate-500 truncate w-full text-center">@label</span>
+                        <span class="text-xs text-deeps-subtle truncate w-full text-center">@label</span>
                     </div>
                 }
             </div>
         }
         else
         {
-            <p class="text-sm text-slate-500">Need at least 2 runs for histogram.</p>
+            <p class="text-sm text-deeps-subtle">Need at least 2 runs for histogram.</p>
         }
     </div>
 }
@@ -181,7 +181,7 @@
         <h2 class="font-semibold mb-3">Run Comparison Overlay</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div>
-                <label class="block text-xs uppercase tracking-wide text-slate-400 mb-1">Baseline Run (Run A)</label>
+                <label class="block text-xs uppercase tracking-wide text-deeps-muted mb-1">Baseline Run (Run A)</label>
                 <select class="input w-full text-xs" @bind="run1Id">
                     @foreach (var r in runs)
                     {
@@ -192,7 +192,7 @@
                 </select>
             </div>
             <div>
-                <label class="block text-xs uppercase tracking-wide text-slate-400 mb-1">Comparison Run (Run B)</label>
+                <label class="block text-xs uppercase tracking-wide text-deeps-muted mb-1">Comparison Run (Run B)</label>
                 <select class="input w-full text-xs" @bind="run2Id">
                     @foreach (var r in runs)
                     {
@@ -206,7 +206,7 @@
 
         <div class="overflow-x-auto">
             <table class="w-full text-sm text-left">
-                <thead class="text-slate-500 text-xs uppercase tracking-wide">
+                <thead class="text-deeps-subtle text-xs uppercase tracking-wide">
                     <tr>
                         <th class="py-1 pr-3">Segment</th>
                         <th>Run A Duration</th>
@@ -220,22 +220,22 @@
                         var s1 = r1?.Splits.FirstOrDefault(s => s.SegmentId == seg.Id);
                         var s2 = r2?.Splits.FirstOrDefault(s => s.SegmentId == seg.Id);
                         var d = (s1 is not null && s2 is not null) ? s2.Duration - s1.Duration : (TimeSpan?)null;
-                        var deltaColor = d is null ? "" : d.Value < TimeSpan.Zero ? "text-green-400" : d.Value > TimeSpan.Zero ? "text-red-400" : "";
+                        var deltaColor = d is null ? "" : d.Value < TimeSpan.Zero ? "text-deeps-success" : d.Value > TimeSpan.Zero ? "text-deeps-danger" : "";
 
-                        <tr class="border-t border-slate-800">
+                        <tr class="border-t border-deeps-border">
                             <td class="py-1.5 pr-3 font-sans">@seg.IconEmoji @seg.Name</td>
                             <td>@StatsService.Format(s1?.Duration)</td>
                             <td>@StatsService.Format(s2?.Duration)</td>
                             <td class="@deltaColor">@StatsService.FormatDelta(d)</td>
                         </tr>
                     }
-                    <tr class="border-t-2 border-slate-700 font-bold">
+                    <tr class="border-t-2 border-deeps-border-strong font-bold">
                         <td class="py-2 pr-3 font-sans">Total</td>
                         <td>@StatsService.Format(r1?.Total)</td>
                         <td>@StatsService.Format(r2?.Total)</td>
                         @{
                             var totDelta = (r1 is not null && r2 is not null) ? r2.Total - r1.Total : (TimeSpan?)null;
-                            var totColor = totDelta is null ? "" : totDelta.Value < TimeSpan.Zero ? "text-green-400" : totDelta.Value > TimeSpan.Zero ? "text-red-400" : "";
+                            var totColor = totDelta is null ? "" : totDelta.Value < TimeSpan.Zero ? "text-deeps-success" : totDelta.Value > TimeSpan.Zero ? "text-deeps-danger" : "";
                         }
                         <td class="@totColor">@StatsService.FormatDelta(totDelta)</td>
                     </tr>
