@@ -23,16 +23,29 @@ For live CSS rebuilds during development: `npm run watch:css` in a second termin
    Or pick **DEEPS: Run without debugging** for `dotnet watch` hot reload.
 4. Optional: run the **css: watch** task (Terminal > Run Task) to rebuild Tailwind as you edit.
 
-## Status (initial commit)
+## Features
 
-- Models: Game, Category, Segment, Run, SplitTime, Mistake, Strategy
-- `StatsService`: PB, best segment, sum of best, average, consistency (std dev)
-- Pages: Dashboard, Games (add games / categories / segments), Practice (timer, splits, mistake log)
-- In-memory `PracticeStore` seeded with a demo game
+- Manage games, categories, segments, goals, and strategies.
+- Practice with a timer, splits, comparisons, mistake and run notes, pause/resume,
+  undo/skip, countdown, segment loop mode, and keyboard/gamepad controls.
+- Persist practice data and settings in browser localStorage.
+- Review run history and statistics, including personal-best progression and
+  segment consistency.
+- Import and export JSON, CSV, and LiveSplit `.lss` data.
+- Configure hotkeys, gamepad buttons, timing method, and timer display settings.
 
-## Roadmap
+## Tests
 
-- Persist data (localStorage/IndexedDB or API)
-- Strategy notes per segment UI
-- Run history + charts, import/export (LiveSplit .lss)
-- Edit/delete games, categories, segments
+Run the unit tests with:
+
+```bash
+dotnet test Deeps.sln
+```
+
+Current unit tests cover `StatsService`. Browser persistence and import/export
+are not yet covered by automated tests.
+
+## Possible future work
+
+- Add a stream/OBS overlay.
+- Expand automated tests for persistence and import/export.
