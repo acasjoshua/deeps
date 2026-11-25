@@ -1,0 +1,7 @@
+{
+  "files.associations": { "*.css": "tailwindcss" },
+  "tailwindCSS.includeLanguages": { "razor": "html", "aspnetcorerazor": "html" },
+  "tailwindCSS.experimental.classRegex": [["class=\"([^\"]*)\"", "([^\"]*)"]],
+  "editor.quickSuggestions": { "strings": "on" },
+  "dotnet.defaultSolution": "Deeps.sln"
+}

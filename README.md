@@ -15,6 +15,14 @@ dotnet run
 
 For live CSS rebuilds during development: `npm run watch:css` in a second terminal.
 
+## VS Code
+
+1. Install the recommended extensions (C# Dev Kit, Tailwind CSS IntelliSense) and the .NET 8 SDK + Node.js.
+2. Open the `deeps` folder in VS Code.
+3. Press **F5** and pick **DEEPS: Debug in browser** (installs npm packages, builds CSS, launches Chrome with the debugger attached at http://localhost:5080).
+   Or pick **DEEPS: Run without debugging** for `dotnet watch` hot reload.
+4. Optional: run the **css: watch** task (Terminal > Run Task) to rebuild Tailwind as you edit.
+
 ## Status (initial commit)
 
 - Models: Game, Category, Segment, Run, SplitTime, Mistake, Strategy

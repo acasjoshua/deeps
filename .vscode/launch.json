@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "DEEPS: Debug in browser",
+      "type": "blazorwasm",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "url": "http://localhost:5080",
+      "browser": "chrome",
+      "preLaunchTask": "css: install + build"
+    },
+    {
+      "name": "DEEPS: Run without debugging (dotnet watch)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run build:css && dotnet watch run",
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}
