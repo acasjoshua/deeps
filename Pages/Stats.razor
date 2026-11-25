@@ -41,7 +41,7 @@
                 if (dateRange < 1) dateRange = 1;
             }
             <svg class="w-full h-full" viewBox="0 0 400 100" preserveAspectRatio="none">
-                <polyline fill="none" stroke="#6366f1" stroke-width="2"
+                <polyline fill="none" style="stroke: rgb(var(--deeps-chart-line))" stroke-width="2"
                           points="@(string.Join(" ", progression.Select(p =>
                           {
                               var x = (p.Date - minDate).TotalSeconds / dateRange * 390 + 5;
@@ -52,7 +52,8 @@
                 {
                     var x = (p.Date - minDate).TotalSeconds / dateRange * 390 + 5;
                     var y = 95 - (maxT - p.Time.TotalSeconds) / range * 85;
-                    <circle cx="@(x.ToString("F1"))" cy="@(y.ToString("F1"))" r="3" fill="#818cf8"
+                    <circle cx="@(x.ToString("F1"))" cy="@(y.ToString("F1"))" r="3"
+                            style="fill: rgb(var(--deeps-chart-point))"
                             class="cursor-pointer">
                         <title>@p.Date.ToLocalTime().ToString("MM/dd") — @StatsService.Format(p.Time)</title>
                     </circle>

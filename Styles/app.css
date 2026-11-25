@@ -2,6 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --deeps-50: 236 253 245;
+  --deeps-100: 209 250 229;
+  --deeps-200: 167 243 208;
+  --deeps-300: 110 231 183;
+  --deeps-400: 52 211 153;
+  --deeps-500: 16 185 129;
+  --deeps-600: 5 150 105;
+  --deeps-700: 4 120 87;
+  --deeps-800: 6 95 70;
+  --deeps-900: 6 78 59;
+  --deeps-950: 2 44 34;
+  --deeps-chart-line: var(--deeps-500);
+  --deeps-chart-point: var(--deeps-300);
+  --deeps-danger: 239 68 68;
+}
+
 @layer components {
   .btn { @apply rounded-lg px-3 py-1.5 text-sm font-medium transition disabled:opacity-40; }
   .btn-primary { @apply btn bg-deeps-500 text-slate-900 hover:bg-deeps-400; }
