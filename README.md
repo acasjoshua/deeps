@@ -29,10 +29,19 @@ For live CSS rebuilds during development: `npm run watch:css` in a second termin
 - Practice with a timer, splits, comparisons, mistake and run notes, pause/resume,
   undo/skip, countdown, segment loop mode, and keyboard/gamepad controls.
 - Persist practice data and settings in browser localStorage.
+- Switch between dark and light themes from Settings.
 - Review run history and statistics, including personal-best progression and
   segment consistency.
 - Import and export JSON, CSV, and LiveSplit `.lss` data.
 - Configure hotkeys, gamepad buttons, timing method, and timer display settings.
+- Show a live, transparent OBS browser-source overlay for a practice category.
+
+## OBS Browser Source
+
+Open a category's Practice page and select **OBS Overlay**; it opens the
+transparent overlay in a new tab. Copy that URL into an OBS **Browser Source**.
+Keep the Practice page open while streaming. The overlay receives live updates
+from the practice page in the same browser origin.
 
 ## Tests
 
@@ -47,5 +56,4 @@ are not yet covered by automated tests.
 
 ## Possible future work
 
-- Add a stream/OBS overlay.
 - Expand automated tests for persistence and import/export.
