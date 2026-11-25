@@ -29,7 +29,9 @@ For live CSS rebuilds during development: `npm run watch:css` in a second termin
 - Practice with a timer, splits, comparisons, mistake and run notes, pause/resume,
   undo/skip, countdown, segment loop mode, and keyboard/gamepad controls.
 - Persist practice data and settings in browser localStorage.
-- Switch between dark and light themes from Settings.
+- Switch between dark and light themes from Settings. The dark theme uses a
+  plum-violet palette with warm pink/coral accents and a Century Gothic font
+  stack (with cross-platform fallbacks).
 - Review run history and statistics, including personal-best progression and
   segment consistency.
 - Import and export JSON, CSV, and LiveSplit `.lss` data.
