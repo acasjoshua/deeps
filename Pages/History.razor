@@ -1,0 +1,363 @@
+@page "/history/{CategoryId:guid}"
+@inject PracticeStore Store
+@implements IDisposable
+
+@if (category is null)
+{
+    <p class="text-slate-400">Category not found.</p>
+    return;
+}
+
+<PageTitle>History - @category.Name</PageTitle>
+
+<div class="flex items-center justify-between">
+    <h1 class="text-2xl font-bold">Run History — @category.Name</h1>
+    <div class="flex gap-2">
+        <button class="btn-primary text-xs" @onclick="OpenAddManualRun">+ Manual Run</button>
+        <a href="practice/@CategoryId" class="btn-ghost text-sm">← Practice</a>
+    </div>
+</div>
+
+@* Session summary *@
+<div class="card mt-4">
+    <h2 class="font-semibold text-sm text-slate-400 uppercase tracking-wide">Today's session</h2>
+    <div class="mt-2 flex flex-wrap gap-6 text-sm">
+        <div><dt class="text-slate-500">Runs</dt><dd class="font-mono">@sessionRuns.Count</dd></div>
+        <div><dt class="text-slate-500">Completed</dt><dd class="font-mono">@sessionRuns.Count(r=>r.Completed)</dd></div>
+        <div><dt class="text-slate-500">Resets</dt><dd class="font-mono">@sessionRuns.Count(r=>!r.Completed)</dd></div>
+        <div><dt class="text-slate-500">Playtime</dt><dd class="font-mono">@StatsService.Format(StatsService.SessionPlaytime(category, DateTime.UtcNow))</dd></div>
+        @if (sessionBest is not null)
+        {
+            <div><dt class="text-slate-500">Session best</dt><dd class="font-mono">@StatsService.Format(sessionBest.Total)</dd></div>
+        }
+    </div>
+</div>
+
+@* Reset heatmap *@
+@if (category.Segments.Count > 0)
+{
+    var heatmap = StatsService.ResetHeatmap(category);
+    int maxResets = heatmap.Length > 0 ? heatmap.Max() : 0;
+    <div class="card mt-4">
+        <h2 class="font-semibold text-sm text-slate-400 uppercase tracking-wide mb-2">Reset heatmap (run kill rate)</h2>
+        <div class="flex gap-1 items-end overflow-x-auto pb-2">
+            @for (int i = 0; i < category.Segments.OrderBy(s=>s.Order).Count(); i++)
+            {
+                var seg  = category.Segments.OrderBy(s => s.Order).ElementAt(i);
+                var pct  = maxResets > 0 ? (double)heatmap[i] / maxResets : 0;
+                var h    = (int)(pct * 64) + 4;
+                <div class="flex flex-col items-center gap-1 min-w-[2.5rem]" title="@seg.Name: @heatmap[i] resets">
+                    <span class="text-xs font-mono text-red-400">@heatmap[i]</span>
+                    <div class="w-8 rounded-t"
+                         style="height:@(h)px; background: rgba(239,68,68,@(0.2 + pct * 0.8))">
+                    </div>
+                    <span class="text-xs text-slate-500 truncate w-8 text-center">@(seg.Name.Length>4 ? seg.Name[..4]+"…" : seg.Name)</span>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@* Runs table *@
+<div class="card mt-4 overflow-x-auto">
+    <div class="flex items-center justify-between mb-3">
+        <h2 class="font-semibold">All runs</h2>
+        <label class="flex items-center gap-2 text-xs text-slate-400">
+            <input type="checkbox" @bind="showCompleted" class="accent-deeps-500" /> Completed only
+        </label>
+    </div>
+    <table class="w-full text-sm text-left">
+        <thead class="text-slate-500 text-xs uppercase tracking-wide">
+            <tr>
+                <th class="py-1 pr-3">#</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Status</th>
+                <th>Reset at</th>
+                <th>Mistakes</th>
+                <th>Notes</th>
+                <th class="text-right">Actions</th>
+            </tr>
+        </thead>
+        <tbody class="font-mono">
+            @{int n = 0;}
+            @foreach (var run in FilteredRuns)
+            {
+                n++;
+                var capturedRun = run;
+                var resetSeg = !run.Completed && run.ResetAtSegmentIndex >= 0
+                    ? category.Segments.OrderBy(s=>s.Order).ElementAtOrDefault(run.ResetAtSegmentIndex)?.Name
+                    : null;
+                <tr class="border-t border-slate-800 @(run.Completed?"":"text-slate-500")">
+                    <td class="py-1.5 pr-3">@n</td>
+                    <td>@run.StartedAt.ToLocalTime().ToString("MM/dd HH:mm")</td>
+                    <td class="@(IsPb(run) ? "text-yellow-400 font-bold" : "")">
+                        @StatsService.Format(run.Total)
+                        @if (IsPb(run)) { <span class="ml-1 text-xs">PB</span> }
+                    </td>
+                    <td>@(run.Completed ? "✅" : "❌")</td>
+                    <td class="font-sans text-xs">@(resetSeg ?? "")</td>
+                    <td>@run.Mistakes.Count</td>
+                    <td class="font-sans text-xs max-w-xs truncate">@run.Notes</td>
+                    <td class="text-right">
+                        <button class="text-xs text-slate-400 hover:text-white mr-2"
+                                title="Edit run & split times"
+                                @onclick="@(() => OpenEditRun(capturedRun))">✏️</button>
+                        <button class="text-xs text-red-400 hover:text-red-300"
+                                title="Delete run"
+                                @onclick="@(() => DeleteRun(capturedRun))">🗑</button>
+                    </td>
+                </tr>
+
+                @* Expandable split details *@
+                @if (expandedRunId == run.Id)
+                {
+                    <tr>
+                        <td colspan="8" class="bg-slate-800/50 pb-2 px-4">
+                            <table class="w-full text-xs mt-1">
+                                <thead><tr>
+                                    <th class="text-left text-slate-500">Segment</th>
+                                    <th>Duration</th>
+                                    <th>Gold</th>
+                                </tr></thead>
+                                <tbody>
+                                    @foreach (var split in run.Splits)
+                                    {
+                                        var seg = category.Segments.FirstOrDefault(s=>s.Id==split.SegmentId);
+                                        <tr>
+                                            <td class="font-sans">@seg?.Name</td>
+                                            <td>@StatsService.Format(split.Duration)</td>
+                                            <td>@(split.IsGold ? "⭐" : "")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </td>
+                    </tr>
+                }
+                <tr class="cursor-pointer hover:bg-slate-800/30"
+                    @onclick="@(() => ToggleExpand(capturedRun.Id))">
+                    <td colspan="8" class="text-center text-xs text-slate-600 pb-0.5">
+                        @(expandedRunId == run.Id ? "▲ hide" : "▼ splits")
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (!FilteredRuns.Any())
+    {
+        <p class="mt-4 text-center text-slate-500 text-sm">No runs yet.</p>
+    }
+</div>
+
+@* Mistake breakdown *@
+@if (category.Runs.Any(r => r.Mistakes.Count > 0))
+{
+    <div class="card mt-4">
+        <h2 class="font-semibold mb-2">Mistake breakdown</h2>
+        <table class="w-full text-sm text-left">
+            <thead class="text-slate-500 text-xs uppercase tracking-wide">
+                <tr>
+                    <th class="py-1">Category</th>
+                    <th>Count</th>
+                    <th>Seconds lost</th>
+                </tr>
+            </thead>
+            <tbody class="font-mono">
+                @foreach (var (mc, count, lost) in StatsService.MistakesByCategory(category))
+                {
+                    <tr class="border-t border-slate-800">
+                        <td class="font-sans py-1">@mc</td>
+                        <td>@count</td>
+                        <td>@lost.ToString("F2")s</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@* ── Edit / Manual Run Modal ── *@
+@if (editingRun is not null)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 overflow-y-auto p-4"
+         @onclick="@(() => editingRun = null)">
+        <div class="card w-full max-w-lg space-y-4 my-8" @onclick:stopPropagation="true">
+            <h3 class="font-semibold text-lg">@(isNewManualRun ? "Add Manual Run" : "Edit Run & Splits")</h3>
+
+            <div class="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                    <label class="block text-slate-400">Timing Method</label>
+                    <select class="input mt-1 w-full" @bind="editingRun.TimingMethod">
+                        <option value="@TimingMethod.RealTime">Real Time</option>
+                        <option value="@TimingMethod.GameTime">Game Time (Loadless)</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-2 mt-6">
+                    <input type="checkbox" id="runComp" @bind="editingRun.Completed" class="accent-deeps-500" />
+                    <label for="runComp" class="text-slate-200">Completed Run</label>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <label class="block text-xs uppercase tracking-wide text-slate-400">Segment Times (e.g. 1:23.45 or 45.2)</label>
+                <div class="max-h-60 overflow-y-auto space-y-2 pr-1">
+                    @foreach (var seg in category.Segments.OrderBy(s => s.Order))
+                    {
+                        var segId = seg.Id;
+                        <div class="flex items-center gap-2 text-sm">
+                            <span class="w-36 truncate font-sans">@seg.Name</span>
+                            <input class="input flex-1 font-mono text-sm py-1"
+                                   placeholder="0:00.00"
+                                   value="@(editSplitStrings.GetValueOrDefault(segId, ""))"
+                                   @onchange="@(e => editSplitStrings[segId] = e.Value?.ToString() ?? "")" />
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm text-slate-400">Run Notes</label>
+                <textarea class="input mt-1 w-full h-16 resize-none text-xs" @bind="editingRun.Notes"></textarea>
+            </div>
+
+            @if (!string.IsNullOrEmpty(editError))
+            {
+                <p class="text-xs text-red-400">@editError</p>
+            }
+
+            <div class="flex gap-2">
+                <button class="btn-primary flex-1" @onclick="SaveRunEdit">Save</button>
+                <button class="btn-ghost" @onclick="@(() => editingRun = null)">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid CategoryId { get; set; }
+
+    private Category? category;
+    private bool      showCompleted;
+    private Guid?     expandedRunId;
+    private List<Run> sessionRuns = new();
+    private Run?      sessionBest;
+
+    // Run edit / manual add modal
+    private Run? editingRun;
+    private bool isNewManualRun;
+    private Dictionary<Guid, string> editSplitStrings = new();
+    private string editError = "";
+
+    protected override void OnParametersSet()
+    {
+        category    = Store.FindCategory(CategoryId);
+        sessionRuns = StatsService.SessionRuns(category!, DateTime.UtcNow);
+        sessionBest = sessionRuns.Where(r => r.Completed).OrderBy(r => r.Total).FirstOrDefault();
+    }
+
+    protected override void OnInitialized() => Store.Changed += Refresh;
+    private void Refresh() => InvokeAsync(StateHasChanged);
+    public void Dispose()  => Store.Changed -= Refresh;
+
+    private IEnumerable<Run> FilteredRuns =>
+        (category?.Runs ?? Enumerable.Empty<Run>())
+            .Where(r => !showCompleted || r.Completed)
+            .OrderByDescending(r => r.StartedAt);
+
+    private bool IsPb(Run run) =>
+        run.Completed && StatsService.PersonalBest(category!)?.Id == run.Id;
+
+    private void ToggleExpand(Guid id) =>
+        expandedRunId = expandedRunId == id ? null : id;
+
+    private async Task DeleteRun(Run run)
+    {
+        if (category is null) return;
+        await Store.DeleteRunAsync(category, run.Id);
+        sessionRuns = StatsService.SessionRuns(category, DateTime.UtcNow);
+        sessionBest = sessionRuns.Where(r => r.Completed).OrderBy(r => r.Total).FirstOrDefault();
+    }
+
+    private void OpenAddManualRun()
+    {
+        if (category is null) return;
+        isNewManualRun = true;
+        editingRun = new Run { Completed = true, TimingMethod = Store.Settings.TimingMethod };
+        editSplitStrings = new();
+        editError = "";
+        foreach (var seg in category.Segments)
+            editSplitStrings[seg.Id] = "";
+    }
+
+    private void OpenEditRun(Run run)
+    {
+        if (category is null) return;
+        isNewManualRun = false;
+        editingRun = run;
+        editSplitStrings = new();
+        editError = "";
+        foreach (var seg in category.Segments)
+        {
+            var split = run.Splits.FirstOrDefault(s => s.SegmentId == seg.Id);
+            editSplitStrings[seg.Id] = split is not null ? StatsService.Format(split.Duration) : "";
+        }
+    }
+
+    private async Task SaveRunEdit()
+    {
+        if (category is null || editingRun is null) return;
+
+        var newSplits = new List<SplitTime>();
+        foreach (var seg in category.Segments.OrderBy(s => s.Order))
+        {
+            if (editSplitStrings.TryGetValue(seg.Id, out var str) && !string.IsNullOrWhiteSpace(str))
+            {
+                if (TryParseTime(str, out var dur))
+                {
+                    if (dur < TimeSpan.Zero)
+                    {
+                        editError = $"Segment '{seg.Name}' cannot have negative duration.";
+                        return;
+                    }
+                    newSplits.Add(new SplitTime { SegmentId = seg.Id, Duration = dur });
+                }
+                else
+                {
+                    editError = $"Invalid time format for '{seg.Name}'. Use m:ss.cc or s.cc.";
+                    return;
+                }
+            }
+        }
+
+        editingRun.Splits = newSplits;
+
+        if (isNewManualRun)
+        {
+            category.AttemptCount++;
+            await Store.SaveRunAsync(category, editingRun);
+        }
+        else
+        {
+            await Store.UpdateRunAsync(category, editingRun);
+        }
+
+        editingRun = null;
+        sessionRuns = StatsService.SessionRuns(category, DateTime.UtcNow);
+        sessionBest = sessionRuns.Where(r => r.Completed).OrderBy(r => r.Total).FirstOrDefault();
+    }
+
+    private static bool TryParseTime(string s, out TimeSpan result)
+    {
+        try
+        {
+            result = TimeSpan.Parse(s.Contains(':') ? s : "0:" + s);
+            return true;
+        }
+        catch
+        {
+            result = default;
+            return false;
+        }
+    }
+}

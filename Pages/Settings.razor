@@ -1,0 +1,257 @@
+@page "/settings"
+@inject PracticeStore Store
+@inject IJSRuntime    JS
+
+<PageTitle>Settings - DEEPS</PageTitle>
+
+<h1 class="text-2xl font-bold">Settings</h1>
+
+<div class="mt-6 max-w-lg space-y-6">
+
+    @* ── Hotkeys ── *@
+    <section class="card space-y-4">
+        <h2 class="text-lg font-semibold">Hotkeys</h2>
+        <p class="text-xs text-slate-400">Click a field, then press the key you want to bind.</p>
+
+        @foreach (var binding in hotkeys)
+        {
+            <div class="flex items-center justify-between gap-4">
+                <label class="text-sm text-slate-300 w-32">@binding.Label</label>
+                <div class="relative">
+                    <input class="input w-28 text-center cursor-pointer select-none"
+                           readonly
+                           value="@Display(binding.GetValue(settings))"
+                           @onfocus="@(() => capturingFor = binding.PropName)"
+                           @onblur="@(() => capturingFor = null)"
+                           @onkeydown="@((e) => CaptureKey(e, binding))"
+                           @onkeydown:preventDefault="true" />
+                    @if (capturingFor == binding.PropName)
+                    {
+                        <span class="absolute -top-5 left-0 text-xs text-deeps-400">Press a key…</span>
+                    }
+                </div>
+                <button class="btn-ghost text-xs" @onclick="@(() => binding.SetValue(settings, binding.Default))">Reset</button>
+            </div>
+        }
+    </section>
+
+    @* ── Gamepad / Controller ── *@
+    <section class="card space-y-4">
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="text-lg font-semibold">Gamepad / Controller</h2>
+                <p class="text-xs text-slate-400">Connect a USB/Bluetooth controller to trigger timer actions.</p>
+            </div>
+            <input type="checkbox" @bind="settings.GamepadEnabled" class="accent-deeps-500 w-4 h-4" />
+        </div>
+
+        @if (settings.GamepadEnabled)
+        {
+            <div class="space-y-3 pt-2">
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-slate-300">Start / Split Button</span>
+                    <select class="input w-36" @bind="settings.GamepadButtonStartSplit">
+                        <option value="0">Button 0 (A / Cross)</option>
+                        <option value="1">Button 1 (B / Circle)</option>
+                        <option value="2">Button 2 (X / Square)</option>
+                        <option value="3">Button 3 (Y / Triangle)</option>
+                        <option value="4">Button 4 (LB / L1)</option>
+                        <option value="5">Button 5 (RB / R1)</option>
+                        <option value="9">Button 9 (Start / Menu)</option>
+                    </select>
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-slate-300">Pause Button</span>
+                    <select class="input w-36" @bind="settings.GamepadButtonPause">
+                        <option value="9">Button 9 (Start / Menu)</option>
+                        <option value="8">Button 8 (Back / Select)</option>
+                        <option value="4">Button 4 (LB / L1)</option>
+                        <option value="5">Button 5 (RB / R1)</option>
+                    </select>
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-slate-300">Undo Button</span>
+                    <select class="input w-36" @bind="settings.GamepadButtonUndo">
+                        <option value="1">Button 1 (B / Circle)</option>
+                        <option value="2">Button 2 (X / Square)</option>
+                        <option value="4">Button 4 (LB / L1)</option>
+                        <option value="8">Button 8 (Back / Select)</option>
+                    </select>
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-slate-300">Reset Button</span>
+                    <select class="input w-36" @bind="settings.GamepadButtonReset">
+                        <option value="8">Button 8 (Back / Select)</option>
+                        <option value="9">Button 9 (Start / Menu)</option>
+                        <option value="5">Button 5 (RB / R1)</option>
+                    </select>
+                </div>
+            </div>
+        }
+    </section>
+
+    @* ── Timer ── *@
+    <section class="card space-y-4">
+        <h2 class="text-lg font-semibold">Timer</h2>
+
+        <div class="flex items-center justify-between">
+            <label class="text-sm text-slate-300">Decimal places</label>
+            <select class="input w-24" @bind="settings.TimerDecimalPlaces">
+                <option value="0">0</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+            </select>
+        </div>
+
+        <div class="flex items-center justify-between">
+            <label class="text-sm text-slate-300">Start delay (seconds)</label>
+            <input class="input w-24" type="number" min="0" max="10" @bind="settings.StartDelay" />
+        </div>
+
+        <div class="flex items-center justify-between">
+            <label class="text-sm text-slate-300">Default timing method</label>
+            <select class="input w-32" @bind="settings.TimingMethod">
+                <option value="@TimingMethod.RealTime">Real time</option>
+                <option value="@TimingMethod.GameTime">Game time</option>
+            </select>
+        </div>
+    </section>
+
+    @* ── Comparisons ── *@
+    <section class="card space-y-4">
+        <h2 class="text-lg font-semibold">Default comparison</h2>
+        <select class="input w-full" @bind="settings.Comparison">
+            <option value="PersonalBest">Personal Best</option>
+            <option value="BestSegments">Best Segments</option>
+            <option value="Average">Average</option>
+            <option value="Median">Median</option>
+            <option value="Worst">Worst</option>
+        </select>
+    </section>
+
+    @* ── Save / restore ── *@
+    <div class="flex gap-3">
+        <button class="btn-primary" @onclick="Save">Save settings</button>
+        <button class="btn-ghost"   @onclick="ExportAll">Export all data (JSON)</button>
+        <label class="btn-ghost cursor-pointer">
+            Import JSON
+            <input id="restoreInput" type="file" accept=".json" class="hidden"
+                   @onchange="ImportAll" />
+        </label>
+    </div>
+
+    @if (!string.IsNullOrEmpty(savedMsg))
+    {
+        <p class="text-sm text-green-400">@savedMsg</p>
+    }
+</div>
+
+@code {
+    private AppSettings settings = new();
+    private string?     capturingFor;
+    private string      savedMsg = "";
+
+    private record HotkeyBinding(
+        string Label,
+        string PropName,
+        string Default,
+        Func<AppSettings, string> GetValue,
+        Action<AppSettings, string> SetValue);
+
+    private List<HotkeyBinding> hotkeys = new()
+    {
+        new("Start / Split", "HotkeyStart",   " ", s => s.HotkeyStart,    (s,v) => s.HotkeyStart    = v),
+        new("Pause",         "HotkeyPause",   "p", s => s.HotkeyPause,    (s,v) => s.HotkeyPause    = v),
+        new("Reset",         "HotkeyReset",   "r", s => s.HotkeyReset,    (s,v) => s.HotkeyReset    = v),
+        new("Undo split",    "HotkeyUndo",    "Backspace", s => s.HotkeyUndo, (s,v) => s.HotkeyUndo = v),
+        new("Skip split",    "HotkeySkip",    "s", s => s.HotkeySkip,    (s,v) => s.HotkeySkip     = v),
+    };
+
+    protected override void OnInitialized()
+    {
+        // Clone settings so Cancel works
+        settings = new AppSettings
+        {
+            HotkeyStart        = Store.Settings.HotkeyStart,
+            HotkeySplit        = Store.Settings.HotkeySplit,
+            HotkeyPause        = Store.Settings.HotkeyPause,
+            HotkeyReset        = Store.Settings.HotkeyReset,
+            HotkeyUndo         = Store.Settings.HotkeyUndo,
+            HotkeySkip         = Store.Settings.HotkeySkip,
+            TimerDecimalPlaces = Store.Settings.TimerDecimalPlaces,
+            StartDelay         = Store.Settings.StartDelay,
+            TimingMethod       = Store.Settings.TimingMethod,
+            Comparison         = Store.Settings.Comparison,
+            GamepadEnabled          = Store.Settings.GamepadEnabled,
+            GamepadButtonStartSplit = Store.Settings.GamepadButtonStartSplit,
+            GamepadButtonPause      = Store.Settings.GamepadButtonPause,
+            GamepadButtonReset      = Store.Settings.GamepadButtonReset,
+            GamepadButtonUndo       = Store.Settings.GamepadButtonUndo,
+        };
+    }
+
+    private void CaptureKey(KeyboardEventArgs e, HotkeyBinding binding)
+    {
+        // Ignore pure modifier presses
+        if (e.Key is "Control" or "Shift" or "Alt" or "Meta") return;
+        binding.SetValue(settings, e.Key);
+        capturingFor = null;
+    }
+
+    private async Task Save()
+    {
+        Store.Settings.HotkeyStart        = settings.HotkeyStart;
+        Store.Settings.HotkeySplit        = settings.HotkeyStart; // same key
+        Store.Settings.HotkeyPause        = settings.HotkeyPause;
+        Store.Settings.HotkeyReset        = settings.HotkeyReset;
+        Store.Settings.HotkeyUndo         = settings.HotkeyUndo;
+        Store.Settings.HotkeySkip         = settings.HotkeySkip;
+        Store.Settings.TimerDecimalPlaces = settings.TimerDecimalPlaces;
+        Store.Settings.StartDelay         = settings.StartDelay;
+        Store.Settings.TimingMethod       = settings.TimingMethod;
+        Store.Settings.Comparison         = settings.Comparison;
+        Store.Settings.GamepadEnabled          = settings.GamepadEnabled;
+        Store.Settings.GamepadButtonStartSplit = settings.GamepadButtonStartSplit;
+        Store.Settings.GamepadButtonPause      = settings.GamepadButtonPause;
+        Store.Settings.GamepadButtonReset      = settings.GamepadButtonReset;
+        Store.Settings.GamepadButtonUndo       = settings.GamepadButtonUndo;
+        await Store.SaveSettingsAsync();
+        savedMsg = "✓ Settings saved";
+        await Task.Delay(2000);
+        savedMsg = "";
+        StateHasChanged();
+    }
+
+    private async Task ExportAll()
+    {
+        var json = ImportExportService.ExportJson(Store.Games);
+        await ImportExportService.DownloadAsync(JS, "deeps-backup.json", json, "application/json");
+    }
+
+    private async Task ImportAll()
+    {
+        var text = await JS.InvokeAsync<string?>("deepsReadFile", "restoreInput");
+        if (!string.IsNullOrEmpty(text))
+        {
+            await Store.ImportJsonAsync(text);
+            savedMsg = "✓ Data restored";
+            await Task.Delay(2000);
+            savedMsg = "";
+            StateHasChanged();
+        }
+    }
+
+    private string Display(string key) => key switch
+    {
+        " "         => "Space",
+        "Backspace" => "⌫",
+        "ArrowUp"   => "↑",
+        "ArrowDown" => "↓",
+        "ArrowLeft" => "←",
+        "ArrowRight"=> "→",
+        "Enter"     => "↵",
+        "Escape"    => "Esc",
+        _           => key.ToUpperInvariant()
+    };
+}

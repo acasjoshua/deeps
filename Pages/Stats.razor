@@ -1,0 +1,271 @@
+@page "/stats/{CategoryId:guid}"
+@inject PracticeStore Store
+@implements IDisposable
+
+@if (category is null)
+{
+    <p class="text-slate-400">Category not found.</p>
+    return;
+}
+
+<PageTitle>Stats - @category.Name</PageTitle>
+
+<div class="flex items-center justify-between">
+    <h1 class="text-2xl font-bold">Stats — @category.Name</h1>
+    <a href="practice/@CategoryId" class="btn-ghost text-sm">← Practice</a>
+</div>
+
+@* Overview cards *@
+<div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <StatCard Label="Personal Best"  Value="@StatsService.Format(pb?.Total)" />
+    <StatCard Label="Sum of Best"    Value="@StatsService.Format(StatsService.SumOfBest(category))" />
+    <StatCard Label="Total Attempts" Value="@category.AttemptCount.ToString()" />
+    <StatCard Label="Completed"      Value="@category.Runs.Count(r=>r.Completed).ToString()" />
+</div>
+
+@* PB progression chart *@
+@{var progression = StatsService.PbProgression(category);}
+@if (progression.Count > 1)
+{
+    <div class="card mt-6">
+        <h2 class="font-semibold mb-3">PB Progression</h2>
+        <div class="relative h-32 w-full">
+            @{
+                var minT  = progression.Min(p => p.Time.TotalSeconds);
+                var maxT  = progression.Max(p => p.Time.TotalSeconds);
+                var range = maxT - minT;
+                if (range < 1) range = 1;
+                var minDate  = progression[0].Date;
+                var maxDate  = progression[^1].Date;
+                var dateRange= (maxDate - minDate).TotalSeconds;
+                if (dateRange < 1) dateRange = 1;
+            }
+            <svg class="w-full h-full" viewBox="0 0 400 100" preserveAspectRatio="none">
+                <polyline fill="none" stroke="#6366f1" stroke-width="2"
+                          points="@(string.Join(" ", progression.Select(p =>
+                          {
+                              var x = (p.Date - minDate).TotalSeconds / dateRange * 390 + 5;
+                              var y = 95 - (maxT - p.Time.TotalSeconds) / range * 85;
+                              return $"{x:F1},{y:F1}";
+                          })))"/>
+                @foreach (var p in progression)
+                {
+                    var x = (p.Date - minDate).TotalSeconds / dateRange * 390 + 5;
+                    var y = 95 - (maxT - p.Time.TotalSeconds) / range * 85;
+                    <circle cx="@(x.ToString("F1"))" cy="@(y.ToString("F1"))" r="3" fill="#818cf8"
+                            class="cursor-pointer">
+                        <title>@p.Date.ToLocalTime().ToString("MM/dd") — @StatsService.Format(p.Time)</title>
+                    </circle>
+                }
+            </svg>
+        </div>
+        <div class="flex justify-between text-xs text-slate-500 mt-1">
+            <span>@progression[0].Date.ToLocalTime().ToString("MM/dd/yy")</span>
+            <span>@progression[^1].Date.ToLocalTime().ToString("MM/dd/yy")</span>
+        </div>
+    </div>
+}
+
+@* Per-segment stats table *@
+<div class="card mt-6 overflow-x-auto">
+    <h2 class="font-semibold mb-3">Segment Statistics</h2>
+    <table class="w-full text-sm text-left">
+        <thead class="text-slate-500 text-xs uppercase tracking-wide">
+            <tr>
+                <th class="py-1 pr-3">Segment</th>
+                <th>PB split</th>
+                <th>Best</th>
+                <th>Avg</th>
+                <th>Median</th>
+                <th>Worst</th>
+                <th>σ</th>
+                <th>Rating</th>
+                <th>Trend (last 10)</th>
+                <th>Time save</th>
+                <th>Mistakes</th>
+                <th>Lost (s)</th>
+            </tr>
+        </thead>
+        <tbody class="font-mono">
+            @foreach (var seg in category.Segments.OrderBy(s => s.Order))
+            {
+                var pbSplit  = pb?.Splits.FirstOrDefault(s => s.SegmentId == seg.Id);
+                var rating   = StatsService.ConsistencyRating(category, seg.Id);
+                var trend    = StatsService.TrendAvg(category, seg.Id, 10);
+                var timeSave = StatsService.PossibleTimeSave(category, seg.Id);
+                <tr class="border-t border-slate-800">
+                    <td class="py-1.5 pr-3 font-sans">@seg.IconEmoji @seg.Name</td>
+                    <td>@StatsService.Format(pbSplit?.Duration)</td>
+                    <td class="text-yellow-400">@StatsService.Format(StatsService.BestSegment(category, seg.Id))</td>
+                    <td>@StatsService.FormatSeconds(StatsService.AverageSeconds(category, seg.Id))</td>
+                    <td>@StatsService.FormatSeconds(StatsService.MedianSeconds(category, seg.Id))</td>
+                    <td>@StatsService.Format(StatsService.WorstSegment(category, seg.Id))</td>
+                    <td>@StatsService.FormatSeconds(StatsService.Consistency(category, seg.Id))</td>
+                    <td>@(rating.HasValue ? $"{rating:F0}/100" : "--")</td>
+                    <td>@StatsService.FormatSeconds(trend)</td>
+                    <td>@StatsService.Format(timeSave)</td>
+                    <td>@StatsService.MistakeCount(category, seg.Id)</td>
+                    <td>@StatsService.TotalSecondsLost(category, seg.Id).ToString("F2")s</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@* Time distribution histogram per segment *@
+@if (category.Runs.Any(r => r.Completed))
+{
+    <div class="card mt-6">
+        <h2 class="font-semibold mb-3">Segment time distribution</h2>
+        <div class="mb-2">
+            <select class="input text-xs" @bind="histSegIdx">
+                @for (int i = 0; i < category.Segments.OrderBy(s => s.Order).Count(); i++)
+                {
+                    var idx = i;
+                    var sn  = category.Segments.OrderBy(s => s.Order).ElementAt(idx).Name;
+                    <option value="@idx">@sn</option>
+                }
+            </select>
+        </div>
+        @{
+            var histSeg   = category.Segments.OrderBy(s => s.Order).ElementAtOrDefault(histSegIdx);
+            var histTimes = histSeg is null ? new List<double>()
+                : StatsService.SegmentTimes(category, histSeg.Id)
+                              .Select(t => t.TotalSeconds).OrderBy(x => x).ToList();
+        }
+        @if (histTimes.Count >= 2)
+        {
+            var hMin    = histTimes.Min();
+            var hMax    = histTimes.Max();
+            var hRange  = hMax - hMin;
+            int bins    = Math.Min(10, histTimes.Count);
+            var bw      = hRange / bins;
+            var counts  = new int[bins];
+            foreach (var t in histTimes)
+            {
+                int b = Math.Min((int)((t - hMin) / bw), bins - 1);
+                counts[b]++;
+            }
+            int maxCount = counts.Max();
+            <div class="flex items-end gap-1 h-24">
+                @for (int b = 0; b < bins; b++)
+                {
+                    var pct = maxCount > 0 ? (double)counts[b] / maxCount : 0;
+                    var label = (hMin + b * bw).ToString("F2");
+                    <div class="flex flex-col items-center flex-1 gap-0.5"
+                         title="@label – @(hMin + (b+1)*bw):F2 s: @counts[b] runs">
+                        <span class="text-xs text-slate-400">@counts[b]</span>
+                        <div class="w-full rounded-t bg-deeps-500"
+                             style="height:@((int)(pct * 80) + 4)px"></div>
+                        <span class="text-xs text-slate-500 truncate w-full text-center">@label</span>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="text-sm text-slate-500">Need at least 2 runs for histogram.</p>
+        }
+    </div>
+}
+
+@* Run Comparison Overlay *@
+@if (category.Runs.Count >= 2)
+{
+    var runs = category.Runs.OrderByDescending(r => r.StartedAt).ToList();
+    var r1 = category.Runs.FirstOrDefault(r => r.Id == run1Id) ?? runs.ElementAtOrDefault(1) ?? runs[0];
+    var r2 = category.Runs.FirstOrDefault(r => r.Id == run2Id) ?? runs[0];
+
+    <div class="card mt-6">
+        <h2 class="font-semibold mb-3">Run Comparison Overlay</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="block text-xs uppercase tracking-wide text-slate-400 mb-1">Baseline Run (Run A)</label>
+                <select class="input w-full text-xs" @bind="run1Id">
+                    @foreach (var r in runs)
+                    {
+                        <option value="@r.Id">
+                            @r.StartedAt.ToLocalTime().ToString("MM/dd HH:mm") - @StatsService.Format(r.Total) @(r.Completed ? "(Done)" : "(Reset)")
+                        </option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs uppercase tracking-wide text-slate-400 mb-1">Comparison Run (Run B)</label>
+                <select class="input w-full text-xs" @bind="run2Id">
+                    @foreach (var r in runs)
+                    {
+                        <option value="@r.Id">
+                            @r.StartedAt.ToLocalTime().ToString("MM/dd HH:mm") - @StatsService.Format(r.Total) @(r.Completed ? "(Done)" : "(Reset)")
+                        </option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead class="text-slate-500 text-xs uppercase tracking-wide">
+                    <tr>
+                        <th class="py-1 pr-3">Segment</th>
+                        <th>Run A Duration</th>
+                        <th>Run B Duration</th>
+                        <th>Segment Delta</th>
+                    </tr>
+                </thead>
+                <tbody class="font-mono">
+                    @foreach (var seg in category.Segments.OrderBy(s => s.Order))
+                    {
+                        var s1 = r1?.Splits.FirstOrDefault(s => s.SegmentId == seg.Id);
+                        var s2 = r2?.Splits.FirstOrDefault(s => s.SegmentId == seg.Id);
+                        var d = (s1 is not null && s2 is not null) ? s2.Duration - s1.Duration : (TimeSpan?)null;
+                        var deltaColor = d is null ? "" : d.Value < TimeSpan.Zero ? "text-green-400" : d.Value > TimeSpan.Zero ? "text-red-400" : "";
+
+                        <tr class="border-t border-slate-800">
+                            <td class="py-1.5 pr-3 font-sans">@seg.IconEmoji @seg.Name</td>
+                            <td>@StatsService.Format(s1?.Duration)</td>
+                            <td>@StatsService.Format(s2?.Duration)</td>
+                            <td class="@deltaColor">@StatsService.FormatDelta(d)</td>
+                        </tr>
+                    }
+                    <tr class="border-t-2 border-slate-700 font-bold">
+                        <td class="py-2 pr-3 font-sans">Total</td>
+                        <td>@StatsService.Format(r1?.Total)</td>
+                        <td>@StatsService.Format(r2?.Total)</td>
+                        @{
+                            var totDelta = (r1 is not null && r2 is not null) ? r2.Total - r1.Total : (TimeSpan?)null;
+                            var totColor = totDelta is null ? "" : totDelta.Value < TimeSpan.Zero ? "text-green-400" : totDelta.Value > TimeSpan.Zero ? "text-red-400" : "";
+                        }
+                        <td class="@totColor">@StatsService.FormatDelta(totDelta)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid CategoryId { get; set; }
+
+    private Category? category;
+    private Run?      pb;
+    private int       histSegIdx;
+    private Guid      run1Id;
+    private Guid      run2Id;
+
+    protected override void OnParametersSet()
+    {
+        category = Store.FindCategory(CategoryId);
+        pb       = StatsService.PersonalBest(category!);
+        if (category?.Runs.Count >= 2)
+        {
+            var ordered = category.Runs.OrderByDescending(r => r.StartedAt).ToList();
+            if (run1Id == Guid.Empty) run1Id = ordered[1].Id;
+            if (run2Id == Guid.Empty) run2Id = ordered[0].Id;
+        }
+    }
+
+    protected override void OnInitialized() => Store.Changed += Refresh;
+    private void Refresh() => InvokeAsync(StateHasChanged);
+    public void Dispose()  => Store.Changed -= Refresh;
+}

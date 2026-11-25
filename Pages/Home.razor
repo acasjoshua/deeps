@@ -4,24 +4,43 @@
 
 <PageTitle>DEEPS</PageTitle>
 
-<h1 class="text-2xl font-bold">Dashboard</h1>
-<p class="mt-1 text-slate-400">Break games into segments, track splits, mistakes, strategies and PBs.</p>
+<div class="flex items-center justify-between">
+    <div>
+        <h1 class="text-2xl font-bold">Dashboard</h1>
+        <p class="mt-1 text-slate-400">Break games into segments, track splits, mistakes, strategies and PBs.</p>
+    </div>
+    <a href="settings" class="btn-ghost text-sm">⚙ Settings</a>
+</div>
 
-<div class="mt-6 grid gap-4 md:grid-cols-2">
+<div class="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
     @foreach (var game in Store.Games)
     {
         @foreach (var cat in game.Categories)
         {
-            var pb = StatsService.PersonalBest(cat);
-            <div class="card">
+            var pb   = StatsService.PersonalBest(cat);
+            var sob  = StatsService.SumOfBest(cat);
+            <div class="card flex flex-col gap-3">
                 <div class="text-xs uppercase tracking-wide text-slate-500">@game.Name</div>
                 <div class="text-lg font-semibold">@cat.Name</div>
-                <dl class="mt-3 grid grid-cols-3 gap-2 text-sm">
+                <dl class="grid grid-cols-3 gap-2 text-sm">
                     <div><dt class="text-slate-500">PB</dt><dd class="font-mono">@StatsService.Format(pb?.Total)</dd></div>
-                    <div><dt class="text-slate-500">Sum of best</dt><dd class="font-mono">@StatsService.Format(StatsService.SumOfBest(cat))</dd></div>
-                    <div><dt class="text-slate-500">Runs</dt><dd class="font-mono">@cat.Runs.Count</dd></div>
+                    <div><dt class="text-slate-500">Sum of best</dt><dd class="font-mono">@StatsService.Format(sob)</dd></div>
+                    <div><dt class="text-slate-500">Attempts</dt><dd class="font-mono">@cat.AttemptCount</dd></div>
                 </dl>
-                <a class="btn-primary mt-4 inline-block" href="practice/@cat.Id">Practice</a>
+                @if (cat.GoalTime.HasValue && pb is not null)
+                {
+                    var diff = pb.Total - cat.GoalTime.Value;
+                    <div class="text-xs @(diff <= TimeSpan.Zero ? "text-green-400" : "text-slate-400")">
+                        Goal: @StatsService.Format(cat.GoalTime)
+                        (@(diff <= TimeSpan.Zero ? "✅ achieved" : $"{StatsService.FormatDelta(diff)} off"))
+                    </div>
+                }
+                <div class="flex flex-wrap gap-2 mt-auto">
+                    <a class="btn-primary" href="practice/@cat.Id">Practice</a>
+                    <a class="btn-ghost"   href="history/@cat.Id">History</a>
+                    <a class="btn-ghost"   href="stats/@cat.Id">Stats</a>
+                    <a class="btn-ghost"   href="strategies/@cat.Id">Strats</a>
+                </div>
             </div>
         }
     }
@@ -35,5 +54,5 @@
 @code {
     protected override void OnInitialized() => Store.Changed += Refresh;
     private void Refresh() => InvokeAsync(StateHasChanged);
-    public void Dispose() => Store.Changed -= Refresh;
+    public void Dispose()  => Store.Changed -= Refresh;
 }

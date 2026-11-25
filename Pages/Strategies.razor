@@ -1,0 +1,166 @@
+@page "/strategies/{CategoryId:guid}"
+@inject PracticeStore Store
+@implements IDisposable
+
+@if (category is null)
+{
+    <p class="text-slate-400">Category not found.</p>
+    return;
+}
+
+<PageTitle>Strategies - @category.Name</PageTitle>
+
+<div class="flex items-center justify-between">
+    <h1 class="text-2xl font-bold">Strategies — @category.Name</h1>
+    <a href="practice/@CategoryId" class="btn-ghost text-sm">← Practice</a>
+</div>
+
+@* Goals *@
+<div class="card mt-4 space-y-3">
+    <h2 class="font-semibold">Run goal</h2>
+    <div class="flex gap-3 items-end">
+        <label class="text-sm text-slate-400 block">
+            Target time (m:ss.cc or h:mm:ss)
+            <input class="input mt-1 w-40" placeholder="e.g. 1:23:45" @bind="goalInput" />
+        </label>
+        <button class="btn-primary" @onclick="SaveGoal">Save goal</button>
+        @if (category.GoalTime.HasValue)
+        {
+            <span class="text-sm text-deeps-400">Current goal: @StatsService.Format(category.GoalTime)</span>
+            <button class="btn-ghost text-xs" @onclick="ClearGoal">Clear</button>
+        }
+    </div>
+    @if (!string.IsNullOrEmpty(goalError)) { <p class="text-xs text-red-400">@goalError</p> }
+</div>
+
+@* Whole-run strategies *@
+<div class="card mt-4">
+    <h2 class="font-semibold mb-3">Run-wide strategies</h2>
+    @{
+        var runStrats = category.Strategies.Where(s => s.SegmentId == null).ToList();
+    }
+    @if (!runStrats.Any())
+    {
+        <p class="text-sm text-slate-500">No run-wide strategies yet.</p>
+    }
+    @foreach (var strat in runStrats)
+    {
+        <StrategyCard Strategy="strat" OnActivate="@(id => ActivateStrat(id, null))"
+                      OnDelete="@(id => DeleteStrat(id))" />
+    }
+    <button class="btn-ghost mt-3 text-sm" @onclick="@(() => OpenAdd(null))">+ Add strategy</button>
+</div>
+
+@* Per-segment strategies *@
+@foreach (var seg in category.Segments.OrderBy(s => s.Order))
+{
+    var capturedSeg = seg;
+    var segStrats   = category.Strategies.Where(s => s.SegmentId == seg.Id).ToList();
+    <div class="card mt-4">
+        <h2 class="font-semibold mb-3">@seg.IconEmoji @seg.Name</h2>
+
+        @if (!segStrats.Any())
+        {
+            <p class="text-sm text-slate-500">No strategies yet.</p>
+        }
+        @foreach (var strat in segStrats)
+        {
+            <StrategyCard Strategy="strat"
+                          OnActivate="@(id => ActivateStrat(id, capturedSeg.Id))"
+                          OnDelete="@(id => DeleteStrat(id))" />
+        }
+        <button class="btn-ghost mt-2 text-sm"
+                @onclick="@(() => OpenAdd(capturedSeg.Id))">+ Add strategy</button>
+    </div>
+}
+
+@* Add strategy modal *@
+@if (addModal)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+         @onclick="@(() => addModal = false)">
+        <div class="card w-full max-w-sm space-y-3" @onclick:stopPropagation="true">
+            <h3 class="font-semibold">New Strategy</h3>
+            <label class="block text-sm text-slate-400">Title
+                <input class="input mt-1 w-full" @bind="newStratTitle" />
+            </label>
+            <label class="block text-sm text-slate-400">Notes
+                <textarea class="input mt-1 w-full h-24 resize-none" @bind="newStratNotes"></textarea>
+            </label>
+            @if (!string.IsNullOrEmpty(addError)) { <p class="text-xs text-red-400">@addError</p> }
+            <div class="flex gap-2">
+                <button class="btn-primary flex-1" @onclick="SaveNewStrat">Add</button>
+                <button class="btn-ghost"           @onclick="@(() => addModal = false)">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid CategoryId { get; set; }
+
+    private Category? category;
+    private string    goalInput   = "";
+    private string    goalError   = "";
+    private bool      addModal;
+    private Guid?     addTargetSeg;
+    private string    newStratTitle = "";
+    private string    newStratNotes = "";
+    private string    addError    = "";
+
+    protected override void OnParametersSet()
+    {
+        category  = Store.FindCategory(CategoryId);
+        goalInput = category?.GoalTime.HasValue == true
+            ? StatsService.Format(category.GoalTime) : "";
+    }
+
+    protected override void OnInitialized() => Store.Changed += Refresh;
+    private void Refresh() => InvokeAsync(StateHasChanged);
+    public void Dispose()  => Store.Changed -= Refresh;
+
+    private async Task SaveGoal()
+    {
+        if (category is null) return;
+        if (string.IsNullOrWhiteSpace(goalInput)) { await ClearGoal(); return; }
+        if (!TryParseTime(goalInput, out var t)) { goalError = "Invalid time format."; return; }
+        await Store.UpdateCategoryAsync(category, category.Name, t);
+        goalError = "";
+    }
+
+    private async Task ClearGoal()
+    {
+        if (category is null) return;
+        category.GoalTime = null;
+        await Store.SaveAsync();
+    }
+
+    private void OpenAdd(Guid? segId)
+    {
+        addTargetSeg  = segId;
+        newStratTitle = "";
+        newStratNotes = "";
+        addError      = "";
+        addModal      = true;
+    }
+
+    private async Task SaveNewStrat()
+    {
+        if (category is null) return;
+        if (string.IsNullOrWhiteSpace(newStratTitle)) { addError = "Title is required."; return; }
+        await Store.AddStrategyAsync(category, addTargetSeg, newStratTitle, newStratNotes);
+        addModal = false;
+    }
+
+    private async Task ActivateStrat(Guid stratId, Guid? segId) =>
+        await Store.SetActiveStrategyAsync(category!, stratId, segId);
+
+    private async Task DeleteStrat(Guid stratId) =>
+        await Store.DeleteStrategyAsync(category!, stratId);
+
+    private static bool TryParseTime(string s, out TimeSpan result)
+    {
+        try { result = TimeSpan.Parse(s.Contains(':') ? s : "0:" + s); return true; }
+        catch { result = default; return false; }
+    }
+}

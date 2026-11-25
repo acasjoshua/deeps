@@ -1,51 +1,359 @@
 @page "/games"
 @inject PracticeStore Store
+@inject IJSRuntime JS
 @implements IDisposable
 
 <PageTitle>Games - DEEPS</PageTitle>
 
-<h1 class="text-2xl font-bold">Games</h1>
+<div class="flex items-center justify-between">
+    <h1 class="text-2xl font-bold">Games</h1>
+    <div class="flex gap-2">
+        <label class="btn-ghost cursor-pointer text-xs">
+            Import JSON
+            <input id="importJsonInput" type="file" accept=".json" class="hidden"
+                   @onchange="ImportJson" />
+        </label>
+        <label class="btn-ghost cursor-pointer text-xs">
+            Import .lss
+            <input id="importLssInput" type="file" accept=".lss,.xml" class="hidden"
+                   @onchange="ImportLss" />
+        </label>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(errorMsg))
+{
+    <div class="mt-2 rounded bg-red-900/50 p-2 text-sm text-red-300">@errorMsg</div>
+}
 
 <div class="mt-4 max-w-md">
-    <InlineAdd Placeholder="New game name" OnAdd="@(name => Store.AddGame(name))" />
+    <InlineAdd Placeholder="New game name" OnAdd="@(name => Store.AddGameAsync(name))" />
 </div>
 
 <div class="mt-6 space-y-6">
     @foreach (var game in Store.Games)
     {
         <section class="card">
-            <h2 class="text-lg font-semibold">@game.Name</h2>
+            @if (editingGameId == game.Id)
+            {
+                <div class="flex gap-2">
+                    <input class="input flex-1" @bind="editGameName" @bind:event="oninput"
+                           @onkeydown="@(e => OnGameNameKey(e, game))" />
+                    <button class="btn-primary text-xs" @onclick="@(() => SaveGameName(game))">Save</button>
+                    <button class="btn-ghost text-xs"   @onclick="@(() => editingGameId = null)">Cancel</button>
+                </div>
+            }
+            else
+            {
+                <div class="flex items-center gap-2">
+                    <h2 class="text-lg font-semibold flex-1">@game.Name</h2>
+                    <button class="btn-ghost text-xs" @onclick="@(() => StartEditGame(game))">✏️</button>
+                    <button class="btn-ghost text-xs text-red-400" @onclick="@(() => ConfirmDeleteGame(game))">🗑</button>
+                    <button class="btn-ghost text-xs" @onclick="@(() => ExportGameJson(game))">↓JSON</button>
+                </div>
+            }
 
             <div class="mt-3 space-y-4">
                 @foreach (var cat in game.Categories)
                 {
                     <div class="rounded-lg border border-slate-800 p-3">
-                        <div class="flex items-center justify-between">
-                            <span class="font-medium">@cat.Name</span>
-                            <a class="btn-primary" href="practice/@cat.Id">Practice</a>
-                        </div>
-                        <ol class="mt-2 list-inside list-decimal text-sm text-slate-300">
-                            @foreach (var seg in cat.Segments)
+                        <div class="flex items-center justify-between gap-2">
+                            @if (editingCatId == cat.Id)
                             {
-                                <li>@seg.Name</li>
+                                <input class="input flex-1 text-sm" @bind="editCatName" @bind:event="oninput"
+                                       @onkeydown="@(e => OnCatNameKey(e, game, cat))" />
+                                <button class="btn-primary text-xs" @onclick="@(() => SaveCatName(game, cat))">Save</button>
+                                <button class="btn-ghost text-xs"   @onclick="@(() => editingCatId = null)">×</button>
+                            }
+                            else
+                            {
+                                <span class="font-medium flex-1">@cat.Name</span>
+                                <a class="btn-primary text-xs" href="practice/@cat.Id">Practice</a>
+                                <a class="btn-ghost text-xs"  href="history/@cat.Id">History</a>
+                                <a class="btn-ghost text-xs"  href="strategies/@cat.Id">Strats</a>
+                                <button class="btn-ghost text-xs" @onclick="@(() => StartEditCat(cat))">✏️</button>
+                                <button class="btn-ghost text-xs text-red-400"
+                                        @onclick="@(() => ConfirmDeleteCat(game, cat))">🗑</button>
+                                <button class="btn-ghost text-xs"
+                                        @onclick="@(() => ExportCatCsv(game, cat))">↓CSV</button>
+                                <button class="btn-ghost text-xs"
+                                        @onclick="@(() => ExportLss(game, cat))">↓LSS</button>
+                            }
+                        </div>
+
+                        @* Segments with drag-reorder *@
+                        <ol class="mt-2 space-y-1 text-sm text-slate-300">
+                            @{int idx = 0;}
+                            @foreach (var seg in cat.Segments.OrderBy(s => s.Order))
+                            {
+                                var capturedSeg = seg;
+                                var capturedIdx = idx++;
+                                var isSub = seg.ParentId.HasValue;
+                                <li class="flex items-center gap-2 rounded px-1 py-0.5
+                                           @(isSub ? "ml-6 border-l-2 border-slate-700 pl-2 text-slate-300" : "")
+                                           @(dragOverSegId == seg.Id ? "bg-slate-700" : "hover:bg-slate-800")"
+                                    draggable="true"
+                                    @ondragstart="@(() => DragStart(cat, capturedIdx))"
+                                    @ondragover:preventDefault="true"
+                                    @ondragover="@(() => dragOverSegId = capturedSeg.Id)"
+                                    @ondrop="@(() => DropSeg(cat, capturedIdx))">
+                                    <span class="cursor-grab text-slate-500">⠿</span>
+                                    <span class="flex-1">@(isSub ? "↳ " : "")@seg.IconEmoji @seg.Name</span>
+                                    @if (seg.GoalTime.HasValue)
+                                    {
+                                        <span class="text-xs text-slate-500">🎯 @StatsService.Format(seg.GoalTime)</span>
+                                    }
+                                    <button class="text-xs text-slate-500 hover:text-white"
+                                            @onclick="@(() => OpenSegEdit(cat, capturedSeg))">✏️</button>
+                                    <button class="text-xs text-red-500 hover:text-red-300"
+                                            @onclick="@(() => DeleteSeg(cat, capturedSeg.Id))">×</button>
+                                </li>
                             }
                         </ol>
+
                         <div class="mt-3 max-w-sm">
-                            <InlineAdd Placeholder="Add segment" OnAdd="@(name => Store.AddSegment(cat, name))" />
+                            <InlineAdd Placeholder="Add segment" OnAdd="@(name => Store.AddSegmentAsync(cat, name))" />
                         </div>
                     </div>
                 }
             </div>
 
             <div class="mt-4 max-w-sm">
-                <InlineAdd Placeholder="Add category (e.g. Any%)" OnAdd="@(name => Store.AddCategory(game, name))" />
+                <InlineAdd Placeholder="Add category (e.g. Any%)"
+                           OnAdd="@(name => Store.AddCategoryAsync(game, name))" />
             </div>
         </section>
     }
 </div>
 
+@* Segment edit modal *@
+@if (segEditModal is not null)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+         @onclick="@(() => segEditModal = null)">
+        <div class="card w-full max-w-sm space-y-3" @onclick:stopPropagation="true">
+            <h3 class="font-semibold">Edit Segment</h3>
+            <label class="block text-sm text-slate-400">Name
+                <input class="input mt-1 w-full" @bind="segEditName" />
+            </label>
+            <label class="block text-sm text-slate-400">Icon (emoji)
+                <input class="input mt-1 w-full" maxlength="2" @bind="segEditIcon" />
+            </label>
+            <label class="block text-sm text-slate-400">Notes
+                <textarea class="input mt-1 w-full h-20 resize-none" @bind="segEditNotes"></textarea>
+            </label>
+            <label class="block text-sm text-slate-400">Goal time (m:ss.cc)
+                <input class="input mt-1 w-full" placeholder="e.g. 1:23.45" @bind="segEditGoal" />
+            </label>
+            <label class="block text-sm text-slate-400">Sub-split of (Parent)
+                <select class="input mt-1 w-full text-xs" @bind="segEditParentStr">
+                    <option value="">None (Top-level Segment)</option>
+                    @foreach (var other in segEditModal.Cat.Segments.Where(s => s.Id != segEditModal.Seg.Id && !s.ParentId.HasValue))
+                    {
+                        <option value="@other.Id.ToString()">@other.Name</option>
+                    }
+                </select>
+            </label>
+            <div class="flex gap-2">
+                <button class="btn-primary flex-1" @onclick="SaveSegEdit">Save</button>
+                <button class="btn-ghost"           @onclick="@(() => segEditModal = null)">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+
+@* Confirm delete modal *@
+@if (confirmDeleteMsg is not null)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+        <div class="card w-full max-w-sm space-y-4">
+            <p class="text-sm">@confirmDeleteMsg</p>
+            <div class="flex gap-2">
+                <button class="btn-primary flex-1 bg-red-700 hover:bg-red-600"
+                        @onclick="ExecuteDelete">Delete</button>
+                <button class="btn-ghost" @onclick="@(() => confirmDeleteMsg = null)">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
+    private Guid?  editingGameId;
+    private string editGameName = "";
+    private Guid?  editingCatId;
+    private string editCatName  = "";
+    private string errorMsg     = "";
+
+    // drag-reorder
+    private int    dragFromIdx  = -1;
+    private Category? dragCat;
+    private Guid   dragOverSegId;
+
+    // segment edit modal
+    private record SegEditContext(Category Cat, Segment Seg);
+    private SegEditContext? segEditModal;
+    private string segEditName  = "";
+    private string segEditIcon  = "";
+    private string segEditNotes = "";
+    private string segEditGoal  = "";
+    private string segEditParentStr = "";
+
+    // confirm delete
+    private string? confirmDeleteMsg;
+    private Func<Task>? deleteAction;
+
     protected override void OnInitialized() => Store.Changed += Refresh;
     private void Refresh() => InvokeAsync(StateHasChanged);
     public void Dispose() => Store.Changed -= Refresh;
+
+    // ─── Game edit ────────────────────────────────────────────────────────────
+
+    private void StartEditGame(Game game) { editingGameId = game.Id; editGameName = game.Name; }
+    private async Task SaveGameName(Game game)
+    {
+        if (string.IsNullOrWhiteSpace(editGameName)) return;
+        if (Store.Games.Any(g => g.Id != game.Id && g.Name.Equals(editGameName.Trim(), StringComparison.OrdinalIgnoreCase)))
+        { errorMsg = "A game with that name already exists."; return; }
+        await Store.UpdateGameAsync(game, editGameName);
+        editingGameId = null; errorMsg = "";
+    }
+    private async Task OnGameNameKey(KeyboardEventArgs e, Game game)
+    { if (e.Key == "Enter") await SaveGameName(game); if (e.Key == "Escape") editingGameId = null; }
+
+    private void ConfirmDeleteGame(Game game)
+    {
+        confirmDeleteMsg = $"Delete game \"{game.Name}\" and all its data?";
+        deleteAction = () => Store.DeleteGameAsync(game.Id);
+    }
+
+    // ─── Category edit ────────────────────────────────────────────────────────
+
+    private void StartEditCat(Category cat) { editingCatId = cat.Id; editCatName = cat.Name; }
+    private async Task SaveCatName(Game game, Category cat)
+    {
+        if (string.IsNullOrWhiteSpace(editCatName)) return;
+        await Store.UpdateCategoryAsync(cat, editCatName);
+        editingCatId = null;
+    }
+    private async Task OnCatNameKey(KeyboardEventArgs e, Game game, Category cat)
+    { if (e.Key == "Enter") await SaveCatName(game, cat); if (e.Key == "Escape") editingCatId = null; }
+
+    private void ConfirmDeleteCat(Game game, Category cat)
+    {
+        confirmDeleteMsg = $"Delete category \"{cat.Name}\" and all its runs?";
+        deleteAction = () => Store.DeleteCategoryAsync(game, cat.Id);
+    }
+
+    // ─── Segment edit ─────────────────────────────────────────────────────────
+
+    private void OpenSegEdit(Category cat, Segment seg)
+    {
+        segEditModal = new(cat, seg);
+        segEditName  = seg.Name;
+        segEditIcon  = seg.IconEmoji ?? "";
+        segEditNotes = seg.Notes;
+        segEditGoal  = seg.GoalTime.HasValue ? StatsService.Format(seg.GoalTime) : "";
+        segEditParentStr = seg.ParentId?.ToString() ?? "";
+    }
+
+    private async Task SaveSegEdit()
+    {
+        if (segEditModal is null) return;
+        TimeSpan? goal = null;
+        if (!string.IsNullOrWhiteSpace(segEditGoal) && TryParseTime(segEditGoal, out var g))
+            goal = g;
+        Guid? parentId = Guid.TryParse(segEditParentStr, out var pid) ? pid : null;
+        await Store.UpdateSegmentAsync(segEditModal.Seg, segEditName,
+            segEditIcon.Length > 0 ? segEditIcon : null, segEditNotes, goal, parentId, updateParent: true);
+        segEditModal = null;
+    }
+
+    private async Task DeleteSeg(Category cat, Guid segId)
+    {
+        confirmDeleteMsg = "Delete this segment and all its split history?";
+        deleteAction = () => Store.DeleteSegmentAsync(cat, segId);
+    }
+
+    // ─── Drag reorder ─────────────────────────────────────────────────────────
+
+    private void DragStart(Category cat, int fromIdx) { dragCat = cat; dragFromIdx = fromIdx; }
+
+    private async Task DropSeg(Category cat, int toIdx)
+    {
+        dragOverSegId = Guid.Empty;
+        if (dragCat?.Id != cat.Id || dragFromIdx < 0 || dragFromIdx == toIdx) return;
+        var ordered = cat.Segments.OrderBy(s => s.Order).ToList();
+        var item = ordered[dragFromIdx];
+        ordered.RemoveAt(dragFromIdx);
+        ordered.Insert(toIdx, item);
+        await Store.ReorderSegmentsAsync(cat, ordered);
+        dragFromIdx = -1;
+    }
+
+    // ─── Delete execute ───────────────────────────────────────────────────────
+
+    private async Task ExecuteDelete()
+    {
+        if (deleteAction is not null) await deleteAction();
+        deleteAction = null; confirmDeleteMsg = null;
+    }
+
+    // ─── Export ───────────────────────────────────────────────────────────────
+
+    private async Task ExportGameJson(Game game)
+    {
+        var json = ImportExportService.ExportJson(new List<Game> { game });
+        await ImportExportService.DownloadAsync(JS, $"{game.Name}.json", json, "application/json");
+    }
+
+    private async Task ExportCatCsv(Game game, Category cat)
+    {
+        var csv = ImportExportService.ExportCsv(cat);
+        await ImportExportService.DownloadAsync(JS, $"{game.Name}_{cat.Name}.csv", csv, "text/csv");
+    }
+
+    private async Task ExportLss(Game game, Category cat)
+    {
+        var lss = ImportExportService.ExportLss(game, cat);
+        await ImportExportService.DownloadAsync(JS, $"{game.Name}_{cat.Name}.lss", lss, "text/xml");
+    }
+
+    // ─── Import ───────────────────────────────────────────────────────────────
+
+    private async Task ImportJson()
+    {
+        try
+        {
+            var text = await JS.InvokeAsync<string?>("deepsReadFile", "importJsonInput");
+            if (string.IsNullOrEmpty(text)) return;
+            await Store.ImportJsonAsync(text);
+            errorMsg = "";
+        }
+        catch { errorMsg = "Failed to import JSON — invalid format."; }
+    }
+
+    private async Task ImportLss()
+    {
+        try
+        {
+            var text = await JS.InvokeAsync<string?>("deepsReadFile", "importLssInput");
+            if (string.IsNullOrEmpty(text)) return;
+            var result = ImportExportService.ImportLss(text);
+            if (result is null) { errorMsg = "Failed to parse .lss file."; return; }
+            var (game, _) = result.Value;
+            Store.Games.Add(game);
+            await Store.SaveAsync();
+            errorMsg = "";
+        }
+        catch { errorMsg = "Failed to import .lss — check the file format."; }
+    }
+
+    // ─── Helpers ─────────────────────────────────────────────────────────────
+
+    private static bool TryParseTime(string s, out TimeSpan result)
+    {
+        // Accept m:ss.cc or m:ss or h:mm:ss.cc
+        try { result = TimeSpan.Parse(s.Contains(':') ? s : "0:" + s); return true; }
+        catch { result = default; return false; }
+    }
 }

@@ -14,5 +14,40 @@
         <a href="" class="underline">Reload</a>
     </div>
     <script src="_framework/blazor.webassembly.js"></script>
+    <script>
+        // Trigger a file download from a base64 string
+        window.deepsDownload = function (filename, base64, mime) {
+            const a   = document.createElement('a');
+            a.href    = 'data:' + mime + ';base64,' + base64;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        };
+
+        // Read a file chosen via <input type="file"> and return its text content
+        window.deepsReadFile = function (inputId) {
+            return new Promise((resolve, reject) => {
+                const input = document.getElementById(inputId);
+                if (!input || !input.files || input.files.length === 0) {
+                    resolve(null);
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload  = e => resolve(e.target.result);
+                reader.onerror = () => reject('read error');
+                reader.readAsText(input.files[0]);
+            });
+        };
+
+        // Gamepad polling — returns all currently pressed button indices for a gamepad index
+        window.deepsGamepadButtons = function (gamepadIndex) {
+            const gp = navigator.getGamepads ? navigator.getGamepads()[gamepadIndex] : null;
+            if (!gp) return [];
+            return gp.buttons.map((b, i) => ({ index: i, pressed: b.pressed, value: b.value }))
+                              .filter(b => b.pressed)
+                              .map(b => b.index);
+        };
+    </script>
 </body>
 </html>
