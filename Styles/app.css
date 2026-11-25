@@ -3,47 +3,49 @@
 @tailwind utilities;
 
 :root {
-  --deeps-50: 236 253 245;
-  --deeps-100: 209 250 229;
-  --deeps-200: 167 243 208;
-  --deeps-300: 110 231 183;
-  --deeps-400: 52 211 153;
-  --deeps-500: 16 185 129;
-  --deeps-600: 5 150 105;
-  --deeps-700: 4 120 87;
-  --deeps-800: 6 95 70;
-  --deeps-900: 6 78 59;
-  --deeps-950: 2 44 34;
-  --deeps-page: 2 6 23;
-  --deeps-surface: 15 23 42;
-  --deeps-raised: 30 41 59;
-  --deeps-hover: 51 65 85;
-  --deeps-input: 2 6 23;
-  --deeps-overlay: 0 0 0;
-  --deeps-border: 30 41 59;
-  --deeps-border-strong: 51 65 85;
-  --deeps-text: 241 245 249;
-  --deeps-bright: 255 255 255;
-  --deeps-bright-soft: 226 232 240;
-  --deeps-soft: 203 213 225;
-  --deeps-muted: 148 163 184;
-  --deeps-subtle: 100 116 139;
-  --deeps-faint: 71 85 105;
-  --deeps-on-accent: 15 23 42;
-  --deeps-accent: 52 211 153;
-  --deeps-accent-soft: 110 231 183;
-  --deeps-accent-surface: 6 78 59;
-  --deeps-success: 74 222 128;
-  --deeps-warning: 250 204 21;
-  --deeps-warning-surface: 113 63 18;
-  --deeps-danger: 248 113 113;
-  --deeps-danger-soft: 252 165 165;
-  --deeps-danger-hover: 220 38 38;
-  --deeps-danger-strong: 239 68 68;
-  --deeps-danger-solid: 185 28 28;
-  --deeps-danger-surface: 127 29 29;
+  --deeps-50: 253 244 255;
+  --deeps-100: 250 232 255;
+  --deeps-200: 245 208 254;
+  --deeps-300: 240 171 252;
+  --deeps-400: 232 121 249;
+  --deeps-500: 217 70 239;
+  --deeps-600: 192 38 211;
+  --deeps-700: 162 28 175;
+  --deeps-800: 134 25 143;
+  --deeps-900: 112 26 117;
+  --deeps-950: 74 4 78;
+  --deeps-page: 10 2 17;
+  --deeps-surface: 31 13 40;
+  --deeps-raised: 48 22 59;
+  --deeps-hover: 68 31 78;
+  --deeps-input: 20 8 27;
+  --deeps-overlay: 5 0 10;
+  --deeps-border: 75 43 86;
+  --deeps-border-strong: 105 59 115;
+  --deeps-text: 250 246 252;
+  --deeps-bright: 255 252 255;
+  --deeps-bright-soft: 237 225 242;
+  --deeps-soft: 219 202 225;
+  --deeps-muted: 183 161 191;
+  --deeps-subtle: 151 126 163;
+  --deeps-faint: 115 91 127;
+  --deeps-on-accent: 29 8 34;
+  --deeps-accent: 232 121 249;
+  --deeps-accent-soft: 245 166 248;
+  --deeps-accent-surface: 91 34 104;
+  --deeps-success: 244 164 235;
+  --deeps-warning: 255 164 119;
+  --deeps-warning-surface: 105 44 51;
+  --deeps-danger: 255 133 145;
+  --deeps-danger-soft: 255 177 184;
+  --deeps-danger-hover: 205 70 94;
+  --deeps-danger-strong: 245 104 119;
+  --deeps-danger-solid: 164 48 75;
+  --deeps-danger-surface: 91 28 48;
+  --deeps-warm: 255 126 105;
+  --deeps-glow: 112 32 137;
   --deeps-chart-line: var(--deeps-accent);
-  --deeps-chart-point: var(--deeps-accent-soft);
+  --deeps-chart-point: var(--deeps-warm);
 }
 
 :root[data-theme="light"] {
@@ -62,25 +64,51 @@
   --deeps-muted: 71 85 105;
   --deeps-subtle: 100 116 139;
   --deeps-faint: 148 163 184;
-  --deeps-accent: 4 120 87;
-  --deeps-accent-soft: 6 95 70;
-  --deeps-accent-surface: 167 243 208;
-  --deeps-success: 21 128 61;
-  --deeps-warning: 161 98 7;
-  --deeps-warning-surface: 254 249 195;
+  --deeps-accent: 162 28 175;
+  --deeps-accent-soft: 134 25 143;
+  --deeps-accent-surface: 245 208 254;
+  --deeps-success: 157 45 131;
+  --deeps-warning: 194 65 36;
+  --deeps-warning-surface: 255 237 213;
   --deeps-danger: 185 28 28;
   --deeps-danger-soft: 220 38 38;
   --deeps-danger-hover: 185 28 28;
   --deeps-danger-strong: 185 28 28;
   --deeps-danger-solid: 185 28 28;
   --deeps-danger-surface: 254 226 226;
+  --deeps-warm: 194 65 36;
+  --deeps-glow: 245 208 254;
+  --deeps-chart-line: var(--deeps-accent);
+  --deeps-chart-point: var(--deeps-warm);
+}
+
+body {
+  background-image:
+    radial-gradient(ellipse at 68% 32%, rgb(var(--deeps-glow) / 0.18), transparent 38%),
+    radial-gradient(ellipse at 78% 72%, rgb(var(--deeps-warm) / 0.08), transparent 28%);
+  background-attachment: fixed;
+  font-family: "Century Gothic", "Montserrat", "Avenir Next", sans-serif;
+  letter-spacing: 0.005em;
+}
+
+h1, h2, h3 {
+  letter-spacing: 0.025em;
 }
 
 @layer components {
   .btn { @apply rounded-lg px-3 py-1.5 text-sm font-medium transition disabled:opacity-40; }
-  .btn-primary { @apply btn bg-deeps-500 text-deeps-on-accent hover:bg-deeps-400; }
+  .btn-primary {
+    @apply btn bg-deeps-500 text-deeps-on-accent hover:bg-deeps-400;
+    background-image: linear-gradient(115deg, rgb(var(--deeps-600)), rgb(var(--deeps-warm)));
+    box-shadow: 0 4px 18px rgb(var(--deeps-glow) / 0.2);
+  }
   .btn-ghost { @apply btn bg-deeps-raised text-deeps-text hover:bg-deeps-hover; }
-  .card { @apply rounded-xl border border-deeps-border bg-deeps-surface p-4; }
+  .card {
+    @apply rounded-xl border border-deeps-border bg-deeps-surface p-4;
+    background-color: rgb(var(--deeps-surface) / 0.78);
+    backdrop-filter: blur(16px);
+    box-shadow: 0 12px 40px rgb(0 0 0 / 0.16), inset 0 1px rgb(255 255 255 / 0.035);
+  }
   .input { @apply rounded-lg border border-deeps-border-strong bg-deeps-input px-3 py-1.5 text-sm text-deeps-text placeholder-deeps-subtle focus:border-deeps-500 focus:outline-none; }
 }
 
