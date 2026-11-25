@@ -1,0 +1,13 @@
+{
+  "name": "deeps",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DEEPS - Speedrun Practice Tracker",
+  "scripts": {
+    "build:css": "tailwindcss -i ./Styles/app.css -o ./wwwroot/css/app.css --minify",
+    "watch:css": "tailwindcss -i ./Styles/app.css -o ./wwwroot/css/app.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
+  }
+}

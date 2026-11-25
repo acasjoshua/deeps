@@ -1,0 +1,7 @@
+bin/
+obj/
+node_modules/
+wwwroot/css/app.css
+.vs/
+.idea/
+*.user

@@ -1,0 +1,51 @@
+@page "/games"
+@inject PracticeStore Store
+@implements IDisposable
+
+<PageTitle>Games - DEEPS</PageTitle>
+
+<h1 class="text-2xl font-bold">Games</h1>
+
+<div class="mt-4 max-w-md">
+    <InlineAdd Placeholder="New game name" OnAdd="@(name => Store.AddGame(name))" />
+</div>
+
+<div class="mt-6 space-y-6">
+    @foreach (var game in Store.Games)
+    {
+        <section class="card">
+            <h2 class="text-lg font-semibold">@game.Name</h2>
+
+            <div class="mt-3 space-y-4">
+                @foreach (var cat in game.Categories)
+                {
+                    <div class="rounded-lg border border-slate-800 p-3">
+                        <div class="flex items-center justify-between">
+                            <span class="font-medium">@cat.Name</span>
+                            <a class="btn-primary" href="practice/@cat.Id">Practice</a>
+                        </div>
+                        <ol class="mt-2 list-inside list-decimal text-sm text-slate-300">
+                            @foreach (var seg in cat.Segments)
+                            {
+                                <li>@seg.Name</li>
+                            }
+                        </ol>
+                        <div class="mt-3 max-w-sm">
+                            <InlineAdd Placeholder="Add segment" OnAdd="@(name => Store.AddSegment(cat, name))" />
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="mt-4 max-w-sm">
+                <InlineAdd Placeholder="Add category (e.g. Any%)" OnAdd="@(name => Store.AddCategory(game, name))" />
+            </div>
+        </section>
+    }
+</div>
+
+@code {
+    protected override void OnInitialized() => Store.Changed += Refresh;
+    private void Refresh() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Store.Changed -= Refresh;
+}

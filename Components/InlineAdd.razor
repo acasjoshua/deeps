@@ -1,0 +1,25 @@
+<div class="flex gap-2">
+    <input class="input flex-1" placeholder="@Placeholder" @bind="text" @bind:event="oninput"
+           @onkeydown="OnKey" />
+    <button class="btn-ghost" disabled="@string.IsNullOrWhiteSpace(text)" @onclick="Submit">Add</button>
+</div>
+
+@code {
+    [Parameter] public string Placeholder { get; set; } = "";
+    [Parameter] public EventCallback<string> OnAdd { get; set; }
+
+    private string text = "";
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(text)) return;
+        var value = text;
+        text = "";
+        await OnAdd.InvokeAsync(value);
+    }
+
+    private async Task OnKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await Submit();
+    }
+}

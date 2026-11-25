@@ -1,0 +1,155 @@
+@page "/practice/{CategoryId:guid}"
+@inject PracticeStore Store
+@implements IDisposable
+
+@if (category is null)
+{
+    <p class="text-slate-400">Category not found.</p>
+    return;
+}
+
+<PageTitle>@category.Name - DEEPS</PageTitle>
+
+<h1 class="text-2xl font-bold">@category.Name</h1>
+
+@if (category.Segments.Count == 0)
+{
+    <p class="mt-4 text-slate-400">Add segments on the <a class="text-deeps-400 underline" href="games">Games</a> page first.</p>
+    return;
+}
+
+<div class="card mt-4">
+    <div class="font-mono text-5xl">@StatsService.Format(elapsed)</div>
+    <div class="mt-1 text-sm text-slate-400">
+        @if (running) { <span>Current segment: <b>@category.Segments[current].Name</b></span> }
+        else { <span>Ready</span> }
+    </div>
+    <div class="mt-4 flex flex-wrap gap-2">
+        @if (!running)
+        {
+            <button class="btn-primary" @onclick="Start">Start run</button>
+        }
+        else
+        {
+            <button class="btn-primary" @onclick="Split">Split</button>
+            <button class="btn-ghost" @onclick="Abort">Reset (discard)</button>
+        }
+    </div>
+
+    @if (running)
+    {
+        <div class="mt-4 flex max-w-md gap-2">
+            <input class="input flex-1" placeholder="Mistake note" @bind="mistakeNote" @bind:event="oninput" />
+            <input class="input w-24" type="number" step="0.1" placeholder="sec lost" @bind="mistakeSeconds" />
+            <button class="btn-ghost" @onclick="LogMistake">Log</button>
+        </div>
+    }
+</div>
+
+<div class="card mt-6 overflow-x-auto">
+    <table class="w-full text-left text-sm">
+        <thead class="text-slate-500">
+            <tr>
+                <th class="py-1">Segment</th>
+                <th>This run</th>
+                <th>Best</th>
+                <th>Average</th>
+                <th>Consistency (σ)</th>
+                <th>Mistakes</th>
+            </tr>
+        </thead>
+        <tbody class="font-mono">
+            @for (var i = 0; i < category.Segments.Count; i++)
+            {
+                var seg = category.Segments[i];
+                var thisRun = i < splits.Count ? splits[i].Duration : (TimeSpan?)null;
+                <tr class="@(running && i == current ? "text-deeps-400" : "")">
+                    <td class="py-1 font-sans">@seg.Name</td>
+                    <td>@StatsService.Format(thisRun)</td>
+                    <td>@StatsService.Format(StatsService.BestSegment(category, seg.Id))</td>
+                    <td>@StatsService.FormatSeconds(StatsService.AverageSeconds(category, seg.Id))</td>
+                    <td>@StatsService.FormatSeconds(StatsService.Consistency(category, seg.Id))</td>
+                    <td>@StatsService.MistakeCount(category, seg.Id)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <div class="mt-3 text-sm text-slate-400">
+        PB: <span class="font-mono">@StatsService.Format(StatsService.PersonalBest(category)?.Total)</span>
+        &middot; Sum of best: <span class="font-mono">@StatsService.Format(StatsService.SumOfBest(category))</span>
+    </div>
+</div>
+
+@code {
+    [Parameter] public Guid CategoryId { get; set; }
+
+    private Category? category;
+    private bool running;
+    private int current;
+    private TimeSpan elapsed;
+    private TimeSpan lastSplitAt;
+    private List<SplitTime> splits = new();
+    private List<Mistake> mistakes = new();
+    private string mistakeNote = "";
+    private double mistakeSeconds;
+    private readonly System.Diagnostics.Stopwatch sw = new();
+    private Timer? ticker;
+
+    protected override void OnParametersSet() => category = Store.FindCategory(CategoryId);
+
+    private void Start()
+    {
+        splits = new();
+        mistakes = new();
+        current = 0;
+        lastSplitAt = TimeSpan.Zero;
+        elapsed = TimeSpan.Zero;
+        running = true;
+        sw.Restart();
+        ticker = new Timer(_ => InvokeAsync(() => { elapsed = sw.Elapsed; StateHasChanged(); }),
+                           null, 0, 50);
+    }
+
+    private void Split()
+    {
+        if (category is null) return;
+        var now = sw.Elapsed;
+        splits.Add(new SplitTime { SegmentId = category.Segments[current].Id, Duration = now - lastSplitAt });
+        lastSplitAt = now;
+        current++;
+        if (current >= category.Segments.Count) Finish();
+    }
+
+    private void Finish()
+    {
+        if (category is null) return;
+        Stop();
+        Store.SaveRun(category, new Run { Completed = true, Splits = splits, Mistakes = mistakes });
+    }
+
+    private void Abort() => Stop();
+
+    private void Stop()
+    {
+        sw.Stop();
+        ticker?.Dispose();
+        ticker = null;
+        running = false;
+        current = 0;
+    }
+
+    private void LogMistake()
+    {
+        if (category is null || string.IsNullOrWhiteSpace(mistakeNote)) return;
+        mistakes.Add(new Mistake
+        {
+            SegmentId = category.Segments[current].Id,
+            Note = mistakeNote.Trim(),
+            SecondsLost = mistakeSeconds
+        });
+        mistakeNote = "";
+        mistakeSeconds = 0;
+    }
+
+    public void Dispose() => ticker?.Dispose();
+}

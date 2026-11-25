@@ -1,0 +1,39 @@
+@page "/"
+@inject PracticeStore Store
+@implements IDisposable
+
+<PageTitle>DEEPS</PageTitle>
+
+<h1 class="text-2xl font-bold">Dashboard</h1>
+<p class="mt-1 text-slate-400">Break games into segments, track splits, mistakes, strategies and PBs.</p>
+
+<div class="mt-6 grid gap-4 md:grid-cols-2">
+    @foreach (var game in Store.Games)
+    {
+        @foreach (var cat in game.Categories)
+        {
+            var pb = StatsService.PersonalBest(cat);
+            <div class="card">
+                <div class="text-xs uppercase tracking-wide text-slate-500">@game.Name</div>
+                <div class="text-lg font-semibold">@cat.Name</div>
+                <dl class="mt-3 grid grid-cols-3 gap-2 text-sm">
+                    <div><dt class="text-slate-500">PB</dt><dd class="font-mono">@StatsService.Format(pb?.Total)</dd></div>
+                    <div><dt class="text-slate-500">Sum of best</dt><dd class="font-mono">@StatsService.Format(StatsService.SumOfBest(cat))</dd></div>
+                    <div><dt class="text-slate-500">Runs</dt><dd class="font-mono">@cat.Runs.Count</dd></div>
+                </dl>
+                <a class="btn-primary mt-4 inline-block" href="practice/@cat.Id">Practice</a>
+            </div>
+        }
+    }
+</div>
+
+@if (Store.Games.Count == 0)
+{
+    <p class="mt-6 text-slate-400">No games yet. <a class="text-deeps-400 underline" href="games">Add one.</a></p>
+}
+
+@code {
+    protected override void OnInitialized() => Store.Changed += Refresh;
+    private void Refresh() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Store.Changed -= Refresh;
+}
