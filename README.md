@@ -30,20 +30,23 @@ For live CSS rebuilds during development: `npm run watch:css` in a second termin
   undo/skip, countdown, segment loop mode, and keyboard/gamepad controls.
 - Persist practice data and settings in browser localStorage.
 - Switch between dark and light themes from Settings. The dark theme uses a
-  plum-violet palette with warm pink/coral accents and a Century Gothic font
-  stack (with cross-platform fallbacks).
+  plum-violet palette with warm pink/coral accents and a bundled Montserrat
+  font with system sans-serif fallbacks.
 - Review run history and statistics, including personal-best progression and
   segment consistency.
 - Import and export JSON, CSV, and LiveSplit `.lss` data.
 - Configure hotkeys, gamepad buttons, timing method, and timer display settings.
-- Show a live, transparent OBS browser-source overlay for a practice category.
+- Show a live, transparent overlay for a practice category in another tab in
+  the same browser.
 
-## OBS Browser Source
+## Overlay and OBS
 
 Open a category's Practice page and select **OBS Overlay**; it opens the
-transparent overlay in a new tab. Copy that URL into an OBS **Browser Source**.
-Keep the Practice page open while streaming. The overlay receives live updates
-from the practice page in the same browser origin.
+transparent overlay in a new tab. The overlay uses `BroadcastChannel`, so the
+Practice page and overlay need to be open in the same browser profile. OBS
+Browser Source runs in a separate browser context and may not receive those
+updates; OBS integration has not been tested. To capture the overlay while
+streaming, use Window Capture on the browser showing both tabs.
 
 ## Tests
 

@@ -4,7 +4,7 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["Century Gothic", "Montserrat", "Avenir Next", "sans-serif"]
+        sans: ["Montserrat", "Century Gothic", "Avenir Next", "sans-serif"]
       },
       colors: {
         deeps: {

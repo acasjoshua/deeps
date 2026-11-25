@@ -82,12 +82,20 @@
   --deeps-chart-point: var(--deeps-warm);
 }
 
+@font-face {
+  font-family: "Montserrat";
+  src: url("../fonts/montserrat-latin-400-normal.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
 body {
   background-image:
     radial-gradient(ellipse at 68% 32%, rgb(var(--deeps-glow) / 0.18), transparent 38%),
     radial-gradient(ellipse at 78% 72%, rgb(var(--deeps-warm) / 0.08), transparent 28%);
   background-attachment: fixed;
-  font-family: "Century Gothic", "Montserrat", "Avenir Next", sans-serif;
+  font-family: "Montserrat", "Century Gothic", "Avenir Next", sans-serif;
   letter-spacing: 0.005em;
 }
 
@@ -98,10 +106,12 @@ h1, h2, h3 {
 @layer components {
   .btn { @apply rounded-lg px-3 py-1.5 text-sm font-medium transition disabled:opacity-40; }
   .btn-primary {
-    @apply btn bg-deeps-500 text-deeps-on-accent hover:bg-deeps-400;
-    background-image: linear-gradient(115deg, rgb(var(--deeps-600)), rgb(var(--deeps-warm)));
+    @apply btn text-white;
+    background-image: linear-gradient(115deg, rgb(var(--deeps-700)), rgb(var(--deeps-danger-solid)));
     box-shadow: 0 4px 18px rgb(var(--deeps-glow) / 0.2);
+    transition: filter 150ms ease;
   }
+  .btn-primary:hover { filter: brightness(1.12); }
   .btn-ghost { @apply btn bg-deeps-raised text-deeps-text hover:bg-deeps-hover; }
   .card {
     @apply rounded-xl border border-deeps-border bg-deeps-surface p-4;

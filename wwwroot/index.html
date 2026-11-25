@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DEEPS - Speedrun Practice Tracker</title>
     <base href="/" />
+    <script>
+        try {
+            const settings = JSON.parse(localStorage.getItem("deeps_settings") || "{}");
+            document.documentElement.dataset.theme = settings.Theme === "light" ? "light" : "dark";
+        } catch (error) {
+            console.warn("Unable to apply the saved theme before startup.", error);
+        }
+    </script>
     <link rel="stylesheet" href="css/app.css" />
 </head>
 <body class="bg-deeps-page text-deeps-text">
