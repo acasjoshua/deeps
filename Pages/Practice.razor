@@ -13,8 +13,9 @@
 <PageTitle>@category.Name - DEEPS</PageTitle>
 
 @* Keyboard listener (tab must keep focus) *@
-<div tabindex="0" @ref="pageRef" class="outline-none"
-     @onkeydown="OnKeyDown" @onkeydown:preventDefault="@preventDefault">
+<div tabindex="0" @ref="pageRef" class="outline-none" data-practice-hotkeys
+     data-practice-space-hotkey="@(Hotkeys.IsStartOrSplit(" ") ? "true" : "false")"
+     @onkeydown="OnKeyDown">
 
 <div class="flex items-center justify-between">
     <div>
@@ -23,7 +24,7 @@
         </div>
         <h1 class="text-2xl font-bold">@category.Name</h1>
     </div>
-    <div class="flex gap-2 text-xs">
+    <div class="flex gap-2 text-xs" @onkeydown:stopPropagation="true">
         <a href="history/@CategoryId" class="btn-ghost">History</a>
         <a href="strategies/@CategoryId" class="btn-ghost">Strategies</a>
         <a href="settings" class="btn-ghost">⚙</a>
@@ -77,7 +78,7 @@
     }
 
     @* Control buttons *@
-    <div class="mt-4 flex flex-wrap gap-2">
+    <div class="mt-4 flex flex-wrap gap-2" @onkeydown:stopPropagation="true">
         @if (!running && !paused && countdown == 0)
         {
             <button class="btn-primary" @onclick="StartOrSplit">Start</button>
@@ -105,7 +106,7 @@
     @* Mistake logging *@
     @if (running || paused)
     {
-        <div class="mt-4 flex flex-wrap gap-2">
+        <div class="mt-4 flex flex-wrap gap-2" @onkeydown:stopPropagation="true">
             <input class="input flex-1 min-w-0" placeholder="Mistake note"
                    @bind="mistakeNote" @bind:event="oninput" />
             <select class="input w-32" @bind="mistakeCategory">
@@ -124,14 +125,14 @@
     @* Run notes *@
     @if (running || paused)
     {
-        <div class="mt-2">
+        <div class="mt-2" @onkeydown:stopPropagation="true">
             <textarea class="input w-full h-16 resize-none text-xs" placeholder="Run notes…"
                       @bind="runNotes" @bind:event="oninput"></textarea>
         </div>
     }
 
     @* Comparison selector *@
-    <div class="mt-3 flex items-center gap-2 text-xs text-slate-400">
+    <div class="mt-3 flex items-center gap-2 text-xs text-slate-400" @onkeydown:stopPropagation="true">
         Compare vs:
         <select class="input py-0.5 text-xs" @bind="comparison">
             <option value="PersonalBest">Personal Best</option>
@@ -145,7 +146,7 @@
 
 @* Segment practice mode *@
 <div class="card mt-4">
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-3" @onkeydown:stopPropagation="true">
         <input type="checkbox" id="segLoop" @bind="segLoopEnabled" class="accent-deeps-500" />
         <label for="segLoop" class="text-sm font-medium">Segment loop mode</label>
         @if (segLoopEnabled)
@@ -248,7 +249,7 @@
         <div class="card w-full max-w-sm space-y-4">
             <h3 class="font-semibold">Reset run?</h3>
             <p class="text-sm text-slate-400">Save this attempt to history or discard it?</p>
-            <div class="flex flex-col gap-2">
+            <div class="flex flex-col gap-2" @onkeydown:stopPropagation="true">
                 <button class="btn-primary" @onclick="ResetSave">Save run &amp; reset</button>
                 <button class="btn-ghost text-red-400" @onclick="ResetDiscard">Discard &amp; reset</button>
                 <button class="btn-ghost"              @onclick="@(() => showResetPrompt = false)">Keep running</button>
@@ -279,7 +280,6 @@
     private TimeSpan? bestPossible;
     private TimeSpan? pbTime;
     private bool      showResetPrompt;
-    private bool      preventDefault;
 
     // countdown
     private int       countdown;
@@ -320,41 +320,32 @@
 
     private async Task OnKeyDown(KeyboardEventArgs e)
     {
-        preventDefault = false;
-
         if (!running && !paused && Hotkeys.IsStartOrSplit(e.Key))
         {
-            preventDefault = true;
             await InvokeAsync(StartOrSplit);
         }
         else if (running && Hotkeys.IsStartOrSplit(e.Key))
         {
-            preventDefault = true;
             await InvokeAsync(StartOrSplit);
         }
         else if (running && Hotkeys.IsPause(e.Key))
         {
-            preventDefault = true;
             Pause();
         }
         else if (paused && Hotkeys.IsPause(e.Key))
         {
-            preventDefault = true;
             Resume();
         }
         else if (running && Hotkeys.IsUndo(e.Key))
         {
-            preventDefault = true;
             UndoSplit();
         }
         else if (running && Hotkeys.IsSkip(e.Key))
         {
-            preventDefault = true;
             SkipSplit();
         }
         else if ((running || paused) && Hotkeys.IsReset(e.Key))
         {
-            preventDefault = true;
             InitiateReset();
         }
         StateHasChanged();

@@ -15,6 +15,14 @@
     </div>
     <script src="_framework/blazor.webassembly.js"></script>
     <script>
+        document.addEventListener("keydown", event => {
+            if (event.key !== " " || !(event.target instanceof Element)) return;
+            const target = event.target;
+            if (!target.closest("[data-practice-hotkeys][data-practice-space-hotkey='true']") ||
+                target.closest("a, button, input, select, textarea, label, [contenteditable='true']")) return;
+            event.preventDefault();
+        }, true);
+
         // Trigger a file download from a base64 string
         window.deepsDownload = function (filename, base64, mime) {
             const a   = document.createElement('a');
