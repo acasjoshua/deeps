@@ -3,6 +3,9 @@ module.exports = {
   content: ["./**/*.razor", "./**/*.html", "!./node_modules/**", "!./bin/**", "!./obj/**"],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["Century Gothic", "Montserrat", "Avenir Next", "sans-serif"]
+      },
       colors: {
         deeps: {
           50: "rgb(var(--deeps-50) / <alpha-value>)",
